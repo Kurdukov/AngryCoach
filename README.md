@@ -1,32 +1,23 @@
-# AngryCoach
+# Angry Coach
 
-AngryCoach is a tiny, no-build web app prototype for short, high-energy workout planning.
+Angry Coach is a humorous mobile habit tracker built with Flutter.
 
-## What is inside
+The app keeps one habit locally and reacts to success or failure with sarcastic Russian coach messages.
 
-- Daily workout focus picker
-- Intensity and time controls
-- Generated training plan
-- Progress cards and coach notes
-- Responsive layout for desktop and mobile
+## MVP
 
-## Run locally
+- One habit
+- Daily reminder time
+- Current streak
+- Best streak
+- Failed days
+- Coach trust level
+- Message history
+- Sarcastic local notifications
 
-Open `index.html` in a browser, or serve the folder locally:
+## Run
 
 ```bash
-python3 -m http.server 5173
-```
-
-Then open `http://localhost:5173`.
-
-## Project structure
-
-```text
-.
-├── index.html
-├── src
-│   ├── app.js
-│   └── styles.css
-└── README.md
+flutter pub get
+flutter run
 ```

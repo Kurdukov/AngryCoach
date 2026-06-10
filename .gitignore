@@ -1,6 +1,12 @@
 .DS_Store
-node_modules/
-dist/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.idea/
+*.iml
+build/
+coverage/
 .env
 .env.*
 *.log
