@@ -5,8 +5,10 @@ import '../models/habit.dart';
 import '../models/stats.dart';
 import '../services/coach_service.dart';
 import '../services/storage_service.dart';
+import '../theme/app_colors.dart';
+import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
-import '../widgets/coach_message_card.dart';
+import 'focus_screen.dart';
 import 'history_screen.dart';
 import 'stats_screen.dart';
 
@@ -74,6 +76,20 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _openFocus(Habit habit) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FocusScreen(
+          habit: habit,
+          stats: _stats,
+          onComplete: _complete,
+          onFail: _fail,
+        ),
+      ),
+    );
+    await _load();
+  }
+
   Future<void> _openStats() async {
     await Navigator.of(
       context,
@@ -103,75 +119,116 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('ANGRY COACH')),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        child: Stack(
           children: [
-            const Center(child: AngryAvatar()),
-            const SizedBox(height: 18),
-            CoachMessageCard(message: _message),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
+            ListView(
+              padding: const EdgeInsets.fromLTRB(24, 18, 24, 110),
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Привычка:',
-                      style: TextStyle(color: Colors.white70),
+                    Expanded(
+                      child: Text(
+                        'Доброе утро,\nАндрей',
+                        style: Theme.of(context).textTheme.headlineLarge
+                            ?.copyWith(
+                              color: ink,
+                              fontWeight: FontWeight.w900,
+                              height: 0.95,
+                            ),
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      habit.name,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
+                    _RoundIcon(
+                      icon: Icons.history_rounded,
+                      onTap: _openHistory,
                     ),
-                    const SizedBox(height: 18),
-                    _MetricLine(
-                      label: 'Текущая серия:',
-                      value: '${_stats.currentStreak} дня',
+                    const SizedBox(width: 10),
+                    _ThemeToggle(),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                _WeekStrip(),
+                const SizedBox(height: 22),
+                GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 0.92,
+                  children: [
+                    _HabitCard(
+                      color: AppColors.yellow,
+                      icon: Icons.fitness_center_rounded,
+                      title: habit.name,
+                      subtitle: 'Нажми и встреться с тренером',
+                      trailing: Icons.radio_button_unchecked_rounded,
+                      onTap: () => _openFocus(habit),
                     ),
-                    _MetricLine(
-                      label: 'Лучший результат:',
-                      value: '${_stats.bestStreak} дней 🏆',
+                    _HabitCard(
+                      color: AppColors.lime,
+                      icon: Icons.psychology_alt_rounded,
+                      title: 'Доверие тренера',
+                      subtitle: '${_stats.trustLevel}% хрупкого уважения',
+                      trailing: Icons.visibility_rounded,
+                      onTap: _openStats,
                     ),
-                    _MetricLine(
-                      label: 'Напоминание:',
-                      value: habit.notificationTime,
+                    _HabitCard(
+                      color: dark
+                          ? AppColors.darkCard
+                          : const Color(0xFFF0F1F4),
+                      icon: Icons.chat_bubble_rounded,
+                      title: 'Последний наезд',
+                      subtitle: _message,
+                      trailing: Icons.check_circle_rounded,
+                      muted: true,
+                      onTap: _openHistory,
+                    ),
+                    _HabitCard(
+                      color: AppColors.pink,
+                      icon: Icons.wallet_rounded,
+                      title: 'Провалы',
+                      subtitle: '${_stats.missedDays} отговорок в архиве',
+                      trailing: Icons.radio_button_unchecked_rounded,
+                      onTap: _fail,
+                    ),
+                    _HabitCard(
+                      color: AppColors.blue,
+                      icon: Icons.emoji_events_rounded,
+                      title: 'Лучшая серия',
+                      subtitle: '${_stats.bestStreak} дней до краха',
+                      trailing: Icons.radio_button_unchecked_rounded,
+                      onTap: _openStats,
+                    ),
+                    _HabitCard(
+                      color: dark
+                          ? const Color(0xFF24252C)
+                          : const Color(0xFFF4F5F7),
+                      icon: Icons.bedtime_rounded,
+                      title: 'Напоминание',
+                      subtitle: 'Тренер орет в ${habit.notificationTime}',
+                      trailing: Icons.alarm_rounded,
+                      muted: true,
+                      onTap: () => _openFocus(habit),
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            FilledButton(onPressed: _complete, child: const Text('Я СДЕЛАЛ')),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: _fail, child: const Text('СНОВА ПРОВАЛ')),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _openStats,
-                    icon: const Icon(Icons.bar_chart_rounded),
-                    label: const Text('Статистика'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _openHistory,
-                    icon: const Icon(Icons.history_rounded),
-                    label: const Text('История'),
-                  ),
-                ),
               ],
+            ),
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: 20,
+              child: _BottomDock(
+                onStats: _openStats,
+                onAdd: () => _openFocus(habit),
+                onCoach: _openHistory,
+              ),
             ),
           ],
         ),
@@ -180,30 +237,235 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _MetricLine extends StatelessWidget {
-  const _MetricLine({required this.label, required this.value});
+class _WeekStrip extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final start = today.subtract(Duration(days: today.weekday - 1));
+    final days = List.generate(7, (index) => start.add(Duration(days: index)));
+    const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
+    return SizedBox(
+      height: 78,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: days.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final day = days[index];
+          final selected =
+              day.day == today.day &&
+              day.month == today.month &&
+              day.year == today.year;
+          return _DayChip(
+            day: day.day.toString(),
+            label: labels[index],
+            selected: selected,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  const _DayChip({
+    required this.day,
+    required this.label,
+    required this.selected,
+  });
+
+  final String day;
   final String label;
-  final String value;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
+    final color = selected ? AppColors.ink : AppColors.lime;
+    final textColor = selected ? Colors.white : AppColors.ink;
+
+    return Container(
+      width: 72,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            day,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HabitCard extends StatelessWidget {
+  const _HabitCard({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+    required this.onTap,
+    this.muted = false,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final IconData trailing;
+  final VoidCallback onTap;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = muted && Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : AppColors.ink;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(28),
+      child: Ink(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: textColor, size: 30),
+                const Spacer(),
+                Icon(trailing, color: textColor, size: 28),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.w900,
+                height: 1.0,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor.withValues(alpha: 0.68),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundIcon extends StatelessWidget {
+  const _RoundIcon({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton.filledTonal(
+      onPressed: onTap,
+      icon: Icon(icon),
+      style: IconButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+}
+
+class _ThemeToggle extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final controller = ThemeScope.of(context);
+    return IconButton.filledTonal(
+      onPressed: controller.toggle,
+      icon: Icon(
+        controller.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+      ),
+      style: IconButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+}
+
+class _BottomDock extends StatelessWidget {
+  const _BottomDock({
+    required this.onStats,
+    required this.onAdd,
+    required this.onCoach,
+  });
+
+  final VoidCallback onStats;
+  final VoidCallback onAdd;
+  final VoidCallback onCoach;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70)),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Color(0xFFFFC107),
-                fontWeight: FontWeight.w900,
+          IconButton(onPressed: onStats, icon: const Icon(Icons.home_rounded)),
+          SizedBox(
+            width: 58,
+            height: 58,
+            child: FilledButton(
+              onPressed: onAdd,
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
               ),
+              child: const Icon(Icons.add_rounded),
             ),
           ),
+          IconButton(onPressed: onCoach, icon: const AngryAvatar(size: 36)),
         ],
       ),
     );

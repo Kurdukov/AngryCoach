@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/stats.dart';
 import '../services/coach_service.dart';
 import '../services/storage_service.dart';
+import '../theme/app_colors.dart';
 import '../widgets/stat_card.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -32,6 +33,8 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final stats = _stats;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Статистика')),
@@ -44,11 +47,26 @@ class _StatsScreenState extends State<StatsScreen> {
                   Text(
                     'Статистика разочарований',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
+                      color: ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      CoachService.instance.trustLabel(stats.trustLevel),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   StatCard(
                     title: 'Текущая серия',
                     value: '${stats.currentStreak}',
@@ -67,9 +85,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   StatCard(
                     title: 'Уровень доверия тренера',
                     value: '${stats.trustLevel}%',
-                    subtitle: CoachService.instance.trustLabel(
-                      stats.trustLevel,
-                    ),
+                    subtitle: 'не расслабляйся, это число хрупкое',
                   ),
                 ],
               ),

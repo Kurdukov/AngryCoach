@@ -58,8 +58,8 @@ class NotificationService {
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_reminder',
-          'Daily reminders',
-          channelDescription: 'Sarcastic habit reminders from Angry Coach',
+          'Ежедневные напоминания',
+          channelDescription: 'Саркастичные напоминания от Angry Coach',
           importance: Importance.high,
           priority: Priority.high,
         ),

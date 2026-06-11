@@ -1,21 +1,22 @@
 # Angry Coach
 
-Angry Coach is a humorous mobile habit tracker built with Flutter.
+Angry Coach — мобильный трекер привычек на Flutter с саркастичным русскоязычным тренером.
 
-The app keeps one habit locally and reacts to success or failure with sarcastic Russian coach messages.
+Приложение хранит одну привычку локально, напоминает о ней каждый день и реагирует на успехи или провалы едкими сообщениями тренера.
 
 ## MVP
 
-- One habit
-- Daily reminder time
-- Current streak
-- Best streak
-- Failed days
-- Coach trust level
-- Message history
-- Sarcastic local notifications
+- Одна привычка
+- Время ежедневного напоминания
+- Текущая серия
+- Лучший результат
+- Количество провалов
+- Уровень доверия тренера
+- История сообщений
+- Саркастичные локальные уведомления
+- Светлая и темная тема
 
-## Run
+## Запуск
 
 ```bash
 flutter pub get

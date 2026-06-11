@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/coach_message.dart';
 import '../services/storage_service.dart';
+import '../theme/app_colors.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -30,6 +31,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final messages = _messages;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
 
     return Scaffold(
       appBar: AppBar(title: const Text('История')),
@@ -42,18 +45,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Text(
                     'Архив унижений',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
+                      color: ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 18),
                   if (messages.isEmpty)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text(
-                          'Пока пусто. Но мы оба знаем, что это ненадолго.',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.lime,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: dark ? Colors.transparent : AppColors.ink,
+                        ),
+                      ),
+                      child: const Text(
+                        'Пока пусто. Но мы оба знаем, что это ненадолго.',
+                        style: TextStyle(
+                          color: AppColors.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     )
@@ -76,22 +88,31 @@ class _HistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSuccess = message.type == 'success';
-    return Card(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isSuccess ? AppColors.lime : AppColors.pink,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink),
+      ),
       child: ListTile(
         leading: Icon(
           isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-          color: isSuccess ? const Color(0xFFFFC107) : Colors.redAccent,
+          color: AppColors.ink,
         ),
         title: Text(
           _formatDate(message.date),
-          style: const TextStyle(color: Colors.white70),
+          style: const TextStyle(
+            color: AppColors.ink,
+            fontWeight: FontWeight.w900,
+          ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             '"${message.text}"',
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.ink,
               fontWeight: FontWeight.w700,
             ),
           ),
