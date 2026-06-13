@@ -88,6 +88,7 @@ class _HistoryContent extends StatelessWidget {
         ? 0
         : ((successes / completed) * 100).round();
     final filtered = _filteredResults();
+    final latestMessage = messages.isEmpty ? null : messages.first;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -101,6 +102,10 @@ class _HistoryContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        if (latestMessage != null) ...[
+          _LatestMessageCard(message: latestMessage),
+          const SizedBox(height: 14),
+        ],
         _SummaryPanel(
           completed: completed,
           successes: successes,
@@ -142,6 +147,55 @@ class _HistoryContent extends StatelessWidget {
       }
     }
     return null;
+  }
+}
+
+class _LatestMessageCard extends StatelessWidget {
+  const _LatestMessageCard({required this.message});
+
+  final CoachMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.campaign_rounded, color: Colors.white, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Последний наезд',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message.text,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    height: 1.16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -311,67 +365,105 @@ class _HistoryTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: palette.background,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: palette.border),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: palette.badge,
-              borderRadius: BorderRadius.circular(8),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 8,
+              decoration: BoxDecoration(
+                color: palette.accent,
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(8),
+                ),
+              ),
             ),
-            child: Icon(_statusIcon(result.status), color: AppColors.ink),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        _formatDate(result.dateKey),
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: palette.text,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: palette.badge,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _statusIcon(result.status),
+                            color: palette.icon,
+                            size: 21,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _formatDate(result.dateKey),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  color: palette.text,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ),
+                        _StatusChip(status: result.status),
+                      ],
                     ),
+                    const SizedBox(height: 12),
                     Text(
-                      _statusLabel(result.status),
+                      message == null
+                          ? _fallbackText(result.status)
+                          : message!.text,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: palette.text.withValues(alpha: 0.64),
-                        fontWeight: FontWeight.w900,
+                        color: palette.text.withValues(alpha: 0.82),
+                        fontWeight: FontWeight.w700,
+                        height: 1.18,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  message == null
-                      ? _fallbackText(result.status)
-                      : message!.text,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: palette.text.withValues(alpha: 0.82),
-                    fontWeight: FontWeight.w700,
-                    height: 1.18,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.status});
+
+  final DailyStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPositive = status == DailyStatus.success;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: isPositive ? AppColors.lime : AppColors.pink,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink),
+      ),
+      child: Text(
+        _statusLabel(status),
+        style: const TextStyle(
+          color: AppColors.ink,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -472,13 +564,17 @@ class _HistoryPalette {
   const _HistoryPalette({
     required this.background,
     required this.badge,
+    required this.accent,
     required this.border,
+    required this.icon,
     required this.text,
   });
 
   final Color background;
   final Color badge;
+  final Color accent;
   final Color border;
+  final Color icon;
   final Color text;
 }
 
@@ -489,19 +585,25 @@ _HistoryPalette _palette(DailyStatus status, bool dark) {
     DailyStatus.success => _HistoryPalette(
       background: AppColors.lime,
       badge: Colors.white.withValues(alpha: 0.56),
+      accent: AppColors.green,
       border: Colors.transparent,
+      icon: AppColors.ink,
       text: AppColors.ink,
     ),
     DailyStatus.fail => _HistoryPalette(
       background: AppColors.pink,
       badge: Colors.white.withValues(alpha: 0.48),
+      accent: AppColors.ink,
       border: Colors.transparent,
+      icon: AppColors.ink,
       text: AppColors.ink,
     ),
     DailyStatus.pending => _HistoryPalette(
       background: card,
       badge: dark ? const Color(0xFF24252C) : const Color(0xFFF0F1F4),
+      accent: AppColors.muted,
       border: border,
+      icon: dark ? Colors.white : AppColors.ink,
       text: dark ? Colors.white : AppColors.ink,
     ),
   };
