@@ -181,17 +181,33 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(24, 18, 24, 110),
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Text(
-                        'Доброе утро,\nАндрей',
-                        style: Theme.of(context).textTheme.headlineLarge
-                            ?.copyWith(
-                              color: ink,
-                              fontWeight: FontWeight.w900,
-                              height: 0.95,
-                            ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Сегодня',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  color: AppColors.muted,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _headlineText(),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  color: ink,
+                                  fontWeight: FontWeight.w900,
+                                  height: 0.95,
+                                ),
+                          ),
+                        ],
                       ),
                     ),
                     _RoundIcon(
@@ -202,75 +218,56 @@ class _HomeScreenState extends State<HomeScreen> {
                     _ThemeToggle(),
                   ],
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 18),
                 _WeekStrip(results: _dailyHistory),
-                const SizedBox(height: 22),
-                GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 0.92,
-                  children: [
-                    _HabitCard(
-                      color: AppColors.yellow,
-                      icon: Icons.fitness_center_rounded,
-                      title: habit.name,
-                      subtitle: 'Нажми и встреться с тренером',
-                      trailing: _statusIcon(),
-                      onTap: () => _openFocus(habit),
-                    ),
-                    _HabitCard(
-                      color: AppColors.lime,
-                      icon: Icons.psychology_alt_rounded,
-                      title: 'Доверие тренера',
-                      subtitle:
-                          '${_stats.trustLevel}% уважения, тон: ${_intensity.shortLabel.toLowerCase()}',
-                      trailing: Icons.visibility_rounded,
-                      onTap: _openStats,
-                    ),
-                    _HabitCard(
-                      color: dark
-                          ? AppColors.darkCard
-                          : const Color(0xFFF0F1F4),
-                      icon: Icons.chat_bubble_rounded,
-                      title: 'Последний наезд',
-                      subtitle: _todayStatusText(),
-                      trailing: Icons.check_circle_rounded,
-                      muted: true,
-                      onTap: _openHistory,
-                    ),
-                    _HabitCard(
-                      color: AppColors.pink,
-                      icon: Icons.wallet_rounded,
-                      title: 'Провалы',
-                      subtitle: '${_stats.missedDays} отговорок в архиве',
-                      trailing: Icons.radio_button_unchecked_rounded,
-                      onTap: _dailyResult.isDoneToday
-                          ? _showAlreadyDone
-                          : _fail,
-                    ),
-                    _HabitCard(
-                      color: AppColors.blue,
-                      icon: Icons.emoji_events_rounded,
-                      title: 'Лучшая серия',
-                      subtitle: _weekSummary(),
-                      trailing: Icons.radio_button_unchecked_rounded,
-                      onTap: _openStats,
-                    ),
-                    _HabitCard(
-                      color: dark
-                          ? const Color(0xFF24252C)
-                          : const Color(0xFFF4F5F7),
-                      icon: Icons.bedtime_rounded,
-                      title: 'Напоминание',
-                      subtitle: 'Тренер орет в ${habit.notificationTime}',
-                      trailing: Icons.alarm_rounded,
-                      muted: true,
-                      onTap: () => _openFocus(habit),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                _TodayPanel(
+                  habit: habit,
+                  stats: _stats,
+                  dailyResult: _dailyResult,
+                  message: _todayStatusText(),
+                  onStart: () => _openFocus(habit),
+                  onFail: _dailyResult.isDoneToday ? _showAlreadyDone : _fail,
+                ),
+                const SizedBox(height: 14),
+                _MetricStrip(
+                  currentStreak: _stats.currentStreak,
+                  trustLevel: _stats.trustLevel,
+                  missedDays: _stats.missedDays,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Быстрые действия',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _QuickActionTile(
+                  color: AppColors.lime,
+                  icon: Icons.psychology_alt_rounded,
+                  title: 'Доверие и статистика',
+                  subtitle:
+                      '${_stats.trustLevel}% уважения, тон: ${_intensity.shortLabel.toLowerCase()}',
+                  onTap: _openStats,
+                ),
+                const SizedBox(height: 10),
+                _QuickActionTile(
+                  color: AppColors.blue,
+                  icon: Icons.history_rounded,
+                  title: 'Журнал тренера',
+                  subtitle: _weekSummary(),
+                  onTap: _openHistory,
+                ),
+                const SizedBox(height: 10),
+                _QuickActionTile(
+                  color: dark ? const Color(0xFF24252C) : Colors.white,
+                  icon: Icons.alarm_rounded,
+                  title: 'Напоминание',
+                  subtitle: 'Сегодня в ${habit.notificationTime}',
+                  muted: true,
+                  onTap: () => _openSettings(habit),
                 ),
               ],
             ),
@@ -290,11 +287,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  IconData _statusIcon() {
+  String _headlineText() {
     return switch (_dailyResult.status) {
-      DailyStatus.success => Icons.check_circle_rounded,
-      DailyStatus.fail => Icons.cancel_rounded,
-      DailyStatus.pending => Icons.radio_button_unchecked_rounded,
+      DailyStatus.success => 'Зачёт принят',
+      DailyStatus.fail => 'Провал записан',
+      DailyStatus.pending => 'Тренер ждёт отчёт',
     };
   }
 
@@ -349,6 +346,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return null;
   }
+}
+
+IconData _statusIcon(DailyStatus status) {
+  return switch (status) {
+    DailyStatus.success => Icons.check_circle_rounded,
+    DailyStatus.fail => Icons.cancel_rounded,
+    DailyStatus.pending => Icons.radio_button_unchecked_rounded,
+  };
+}
+
+String _statusLabel(DailyStatus status) {
+  return switch (status) {
+    DailyStatus.success => 'выполнено',
+    DailyStatus.fail => 'провалено',
+    DailyStatus.pending => 'ждёт отчёта',
+  };
 }
 
 class _WeekStrip extends StatelessWidget {
@@ -468,13 +481,238 @@ class _DayChip extends StatelessWidget {
   }
 }
 
-class _HabitCard extends StatelessWidget {
-  const _HabitCard({
+class _TodayPanel extends StatelessWidget {
+  const _TodayPanel({
+    required this.habit,
+    required this.stats,
+    required this.dailyResult,
+    required this.message,
+    required this.onStart,
+    required this.onFail,
+  });
+
+  final Habit habit;
+  final Stats stats;
+  final DailyResult dailyResult;
+  final String message;
+  final VoidCallback onStart;
+  final VoidCallback onFail;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPending = dailyResult.status == DailyStatus.pending;
+    final isSuccess = dailyResult.status == DailyStatus.success;
+    final color = switch (dailyResult.status) {
+      DailyStatus.success => AppColors.lime,
+      DailyStatus.fail => AppColors.pink,
+      DailyStatus.pending => AppColors.yellow,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(_statusIcon(dailyResult.status), size: 24),
+                        const SizedBox(width: 8),
+                        Text(
+                          _statusLabel(dailyResult.status),
+                          style: const TextStyle(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      habit.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w900,
+                            height: 1.0,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      message,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.ink.withValues(alpha: 0.72),
+                        fontWeight: FontWeight.w800,
+                        height: 1.15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              const AngryAvatar(size: 74),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: isPending ? onStart : onStart,
+                  icon: Icon(
+                    isSuccess
+                        ? Icons.visibility_rounded
+                        : Icons.fitness_center_rounded,
+                  ),
+                  label: Text(isPending ? 'Отчитаться' : 'Открыть'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.ink,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 58,
+                height: 58,
+                child: IconButton.filled(
+                  onPressed: onFail,
+                  icon: const Icon(Icons.close_rounded),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.72),
+                    foregroundColor: AppColors.ink,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricStrip extends StatelessWidget {
+  const _MetricStrip({
+    required this.currentStreak,
+    required this.trustLevel,
+    required this.missedDays,
+  });
+
+  final int currentStreak;
+  final int trustLevel;
+  final int missedDays;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _MiniMetric(
+            icon: Icons.local_fire_department_rounded,
+            value: '$currentStreak',
+            label: 'серия',
+            color: AppColors.orange,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _MiniMetric(
+            icon: Icons.visibility_rounded,
+            value: '$trustLevel%',
+            label: 'доверие',
+            color: AppColors.lime,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _MiniMetric(
+            icon: Icons.close_rounded,
+            value: '$missedDays',
+            label: 'провалы',
+            color: AppColors.pink,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniMetric extends StatelessWidget {
+  const _MiniMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 92,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppColors.ink, size: 22),
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.ink,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.ink,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({
     required this.color,
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.trailing,
     required this.onTap,
     this.muted = false,
   });
@@ -483,56 +721,72 @@ class _HabitCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final IconData trailing;
   final VoidCallback onTap;
   final bool muted;
 
   @override
   Widget build(BuildContext context) {
-    final textColor = muted && Theme.of(context).brightness == Brightness.dark
-        ? Colors.white
-        : AppColors.ink;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = muted && dark ? Colors.white : AppColors.ink;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(20),
       child: Ink(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(20),
+          border: muted
+              ? Border.all(
+                  color: dark
+                      ? const Color(0xFF2A2B32)
+                      : const Color(0xFFE1E2EA),
+                )
+              : null,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(icon, color: textColor, size: 30),
-                const Spacer(),
-                Icon(trailing, color: textColor, size: 28),
-              ],
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(
+                  alpha: muted && dark ? 0.08 : 0.5,
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: textColor),
             ),
-            const Spacer(),
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: textColor,
-                fontWeight: FontWeight.w900,
-                height: 1.0,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: textColor.withValues(alpha: 0.68),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: textColor.withValues(alpha: 0.68),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: textColor),
           ],
         ),
       ),
@@ -606,7 +860,10 @@ class _BottomDock extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(onPressed: onStats, icon: const Icon(Icons.home_rounded)),
+          IconButton(
+            onPressed: onStats,
+            icon: const Icon(Icons.bar_chart_rounded),
+          ),
           SizedBox(
             width: 58,
             height: 58,
@@ -621,7 +878,10 @@ class _BottomDock extends StatelessWidget {
               child: const Icon(Icons.add_rounded),
             ),
           ),
-          IconButton(onPressed: onCoach, icon: const AngryAvatar(size: 36)),
+          IconButton(
+            onPressed: onCoach,
+            icon: const Icon(Icons.history_rounded),
+          ),
         ],
       ),
     );
