@@ -139,53 +139,102 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
           children: [
             Text(
-              'Пульт тренера',
+              'Настройки',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                 color: ink,
                 fontWeight: FontWeight.w900,
+                height: 0.95,
               ),
             ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _habitController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Привычка'),
+            const SizedBox(height: 8),
+            Text(
+              'Одна привычка, один тренер, минимум шансов спрятаться.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 22),
+            _SettingsSection(
+              title: 'Привычка',
+              child: TextField(
+                controller: _habitController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Название',
+                  prefixIcon: Icon(Icons.fitness_center_rounded),
+                ),
+              ),
             ),
             const SizedBox(height: 14),
-            _SettingsTile(
-              icon: Icons.schedule_rounded,
-              title: 'Время напоминания',
-              value: _formatTime(_reminderTime),
-              onTap: _pickTime,
+            _SettingsSection(
+              title: 'Режим',
+              child: Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.schedule_rounded,
+                    title: 'Напоминание',
+                    value: _formatTime(_reminderTime),
+                    onTap: _pickTime,
+                  ),
+                  const SizedBox(height: 10),
+                  _SettingsTile(
+                    icon: controller.isDark
+                        ? Icons.dark_mode_rounded
+                        : Icons.light_mode_rounded,
+                    title: 'Тема',
+                    value: controller.isDark ? 'Темная' : 'Светлая',
+                    onTap: controller.toggle,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
-            _SettingsTile(
-              icon: controller.isDark
-                  ? Icons.dark_mode_rounded
-                  : Icons.light_mode_rounded,
-              title: 'Тема',
-              value: controller.isDark ? 'Темная' : 'Светлая',
-              onTap: controller.toggle,
+            _SettingsSection(
+              title: 'Тренер',
+              child: _IntensityPanel(
+                value: _intensity,
+                onChanged: (value) => setState(() => _intensity = value),
+              ),
             ),
             const SizedBox(height: 14),
-            _IntensityPanel(
-              value: _intensity,
-              onChanged: (value) => setState(() => _intensity = value),
-            ),
-            const SizedBox(height: 24),
+            _DangerZone(onReset: _resetProgress),
+            const SizedBox(height: 18),
             FilledButton(
               onPressed: _saving ? null : _save,
               child: Text(_saving ? 'Сохраняю...' : 'Сохранить'),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _resetProgress,
-              icon: const Icon(Icons.restart_alt_rounded),
-              label: const Text('Сбросить прогресс'),
-            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: ink,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+      ],
     );
   }
 }
@@ -202,7 +251,7 @@ class _IntensityPanel extends StatelessWidget {
     final ink = dark ? Colors.white : AppColors.ink;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -253,6 +302,56 @@ class _IntensityPanel extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DangerZone extends StatelessWidget {
+  const _DangerZone({required this.onReset});
+
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.pink),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.restart_alt_rounded, color: AppColors.pink),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Сброс прогресса',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Серия, доверие и журнал начнутся заново.',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(onPressed: onReset, child: const Text('Сбросить')),
         ],
       ),
     );
