@@ -234,40 +234,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   trustLevel: _stats.trustLevel,
                   missedDays: _stats.missedDays,
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Быстрые действия',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _QuickActionTile(
-                  color: AppColors.lime,
-                  icon: Icons.psychology_alt_rounded,
-                  title: 'Доверие и статистика',
-                  subtitle:
-                      '${_stats.trustLevel}% уважения, тон: ${_intensity.shortLabel.toLowerCase()}',
-                  onTap: _openStats,
-                ),
-                const SizedBox(height: 10),
-                _QuickActionTile(
-                  color: AppColors.blue,
-                  icon: Icons.history_rounded,
-                  title: 'Журнал тренера',
-                  subtitle: _weekSummary(),
-                  onTap: _openHistory,
-                ),
-                const SizedBox(height: 10),
-                _QuickActionTile(
-                  color: dark ? const Color(0xFF24252C) : Colors.white,
-                  icon: Icons.alarm_rounded,
-                  title: 'Напоминание',
-                  subtitle: 'Сегодня в ${habit.notificationTime}',
-                  muted: true,
-                  onTap: () => _openSettings(habit),
-                ),
               ],
             ),
             Positioned(
@@ -300,38 +266,6 @@ class _HomeScreenState extends State<HomeScreen> {
       DailyStatus.fail => 'Сегодня провалено. Тренер записал.',
       DailyStatus.pending => _message,
     };
-  }
-
-  String _weekSummary() {
-    final lastSeven = _lastDays(7);
-    final successCount = lastSeven
-        .where((result) => result.status == DailyStatus.success)
-        .length;
-    final failCount = lastSeven
-        .where((result) => result.status == DailyStatus.fail)
-        .length;
-    if (successCount == 0 && failCount == 0) {
-      return '${_stats.bestStreak} дней до краха';
-    }
-    return '$successCount побед, $failCount провалов за неделю';
-  }
-
-  List<DailyResult> _lastDays(int count) {
-    final today = DateTime.now();
-    return List.generate(count, (index) {
-      final day = today.subtract(Duration(days: index));
-      final key = _dateKey(day);
-      return _dailyHistory.firstWhere(
-        (result) => result.dateKey == key,
-        orElse: () => DailyResult(dateKey: key, status: DailyStatus.pending),
-      );
-    });
-  }
-
-  String _dateKey(DateTime date) {
-    return '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
   }
 
   DailyStatus? _previousCompletedStatus() {
@@ -708,93 +642,6 @@ class _MiniMetric extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _QuickActionTile extends StatelessWidget {
-  const _QuickActionTile({
-    required this.color,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.muted = false,
-  });
-
-  final Color color;
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final bool muted;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = muted && dark ? Colors.white : AppColors.ink;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Ink(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          border: muted
-              ? Border.all(
-                  color: dark
-                      ? const Color(0xFF2A2B32)
-                      : const Color(0xFFE1E2EA),
-                )
-              : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(
-                  alpha: muted && dark ? 0.08 : 0.5,
-                ),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: textColor),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: textColor,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: textColor.withValues(alpha: 0.68),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded, color: textColor),
-          ],
-        ),
       ),
     );
   }
