@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/coach_message.dart';
+import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Stats _stats = Stats.initial();
   DailyResult _dailyResult = DailyResult.none();
   List<DailyResult> _dailyHistory = const [];
+  CoachIntensity _intensity = CoachIntensity.toxic;
   String _message =
       'Я честно ожидал от тебя ноль, но ты всё равно умудряешься удивлять.';
   bool _loading = true;
@@ -42,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final message = await StorageService.instance.loadLastCoachMessage();
     final dailyResult = await StorageService.instance.loadDailyResult();
     final dailyHistory = await StorageService.instance.loadDailyHistory();
+    final intensity = await StorageService.instance.loadCoachIntensity();
     if (!mounted) {
       return;
     }
@@ -51,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _message = message;
       _dailyResult = dailyResult;
       _dailyHistory = dailyHistory;
+      _intensity = intensity;
       _loading = false;
     });
   }
@@ -64,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final message = CoachService.instance.contextualSuccessMessage(
       nextStats,
       _previousCompletedStatus(),
+      intensity: _intensity,
     );
     await _saveAction(nextStats, message, 'success');
   }
@@ -73,7 +78,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _showAlreadyDone();
       return;
     }
-    final message = CoachService.instance.failMessage(_stats);
+    final message = CoachService.instance.failMessage(
+      _stats,
+      intensity: _intensity,
+    );
     final nextStats = CoachService.instance.applyFailure(_stats);
     await _saveAction(nextStats, message, 'fail');
   }
@@ -217,7 +225,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: AppColors.lime,
                       icon: Icons.psychology_alt_rounded,
                       title: 'Доверие тренера',
-                      subtitle: '${_stats.trustLevel}% хрупкого уважения',
+                      subtitle:
+                          '${_stats.trustLevel}% уважения, тон: ${_intensity.shortLabel.toLowerCase()}',
                       trailing: Icons.visibility_rounded,
                       onTap: _openStats,
                     ),

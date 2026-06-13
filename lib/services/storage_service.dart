@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/coach_messages.dart';
 import '../models/coach_message.dart';
+import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
@@ -22,6 +23,7 @@ class StorageService {
   static const _dailyResultDateKey = 'dailyResultDate';
   static const _dailyResultStatusKey = 'dailyResultStatus';
   static const _dailyHistoryKey = 'dailyHistory';
+  static const _coachIntensityKey = 'coachIntensity';
 
   Future<Habit?> loadHabit() async {
     final prefs = await SharedPreferences.getInstance();
@@ -48,6 +50,20 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_habitNameKey, habit.name);
     await prefs.setString(_notificationTimeKey, habit.notificationTime);
+  }
+
+  Future<CoachIntensity> loadCoachIntensity() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_coachIntensityKey);
+    return CoachIntensity.values.firstWhere(
+      (value) => value.name == name,
+      orElse: () => CoachIntensity.toxic,
+    );
+  }
+
+  Future<void> saveCoachIntensity(CoachIntensity intensity) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_coachIntensityKey, intensity.name);
   }
 
   Future<void> resetProgress() async {

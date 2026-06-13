@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/coach_intensity.dart';
 import '../models/habit.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
@@ -18,6 +19,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _habitController;
   late TimeOfDay _reminderTime;
+  CoachIntensity _intensity = CoachIntensity.toxic;
   bool _saving = false;
 
   @override
@@ -29,6 +31,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       hour: int.tryParse(parts.first) ?? 9,
       minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
     );
+    _loadIntensity();
+  }
+
+  Future<void> _loadIntensity() async {
+    final intensity = await StorageService.instance.loadCoachIntensity();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _intensity = intensity);
   }
 
   @override
@@ -62,9 +73,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       notificationTime: _formatTime(_reminderTime),
     );
     await StorageService.instance.updateHabit(habit);
+    await StorageService.instance.saveCoachIntensity(_intensity);
     await NotificationService.instance.scheduleDailyReminder(
       habit.notificationTime,
       habitName: habit.name,
+      intensity: _intensity,
     );
 
     if (!mounted) {
@@ -154,6 +167,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: controller.isDark ? 'Темная' : 'Светлая',
               onTap: controller.toggle,
             ),
+            const SizedBox(height: 14),
+            _IntensityPanel(
+              value: _intensity,
+              onChanged: (value) => setState(() => _intensity = value),
+            ),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _saving ? null : _save,
@@ -167,6 +185,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _IntensityPanel extends StatelessWidget {
+  const _IntensityPanel({required this.value, required this.onChanged});
+
+  final CoachIntensity value;
+  final ValueChanged<CoachIntensity> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.local_fire_department_rounded,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  'Жёсткость тренера',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SegmentedButton<CoachIntensity>(
+            segments: CoachIntensity.values
+                .map(
+                  (intensity) => ButtonSegment(
+                    value: intensity,
+                    label: Text(intensity.shortLabel),
+                  ),
+                )
+                .toList(),
+            selected: {value},
+            onSelectionChanged: (selection) => onChanged(selection.first),
+            showSelectedIcon: false,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value.label,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }

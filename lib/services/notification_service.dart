@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as timezone_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../models/coach_intensity.dart';
 import 'coach_service.dart';
 
 class NotificationService {
@@ -36,6 +37,7 @@ class NotificationService {
   Future<void> scheduleDailyReminder(
     String notificationTime, {
     String? habitName,
+    CoachIntensity intensity = CoachIntensity.toxic,
   }) async {
     final parts = notificationTime.split(':');
     final hour = int.tryParse(parts.first) ?? 9;
@@ -54,9 +56,10 @@ class NotificationService {
     }
 
     await _plugin.cancel(1);
-    final body = habitName == null
-        ? CoachService.instance.notificationMessage()
-        : '$habitName. ${CoachService.instance.notificationMessage()}';
+    final message = CoachService.instance.notificationMessage(
+      intensity: intensity,
+    );
+    final body = habitName == null ? message : '$habitName. $message';
 
     await _plugin.zonedSchedule(
       1,

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../data/coach_messages.dart';
+import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
 import '../models/stats.dart';
 
@@ -10,24 +11,39 @@ class CoachService {
   static final instance = CoachService._();
   final Random _random = Random();
 
-  String successMessage(Stats stats) {
+  String successMessage(
+    Stats stats, {
+    CoachIntensity intensity = CoachIntensity.toxic,
+  }) {
     final pool = stats.currentStreak >= 6
         ? strongStreakMessages
         : successMessages;
-    return _pick(pool);
+    return _shapeTone(_pick(pool), intensity, success: true);
   }
 
-  String contextualSuccessMessage(Stats stats, DailyStatus? previousStatus) {
+  String contextualSuccessMessage(
+    Stats stats,
+    DailyStatus? previousStatus, {
+    CoachIntensity intensity = CoachIntensity.toxic,
+  }) {
     if (stats.currentStreak == 1 && previousStatus == null) {
-      return _pick(firstSuccessMessages);
+      return _shapeTone(_pick(firstSuccessMessages), intensity, success: true);
     }
     if (previousStatus == DailyStatus.fail) {
-      return _pick(comebackMessages);
+      return _shapeTone(_pick(comebackMessages), intensity, success: true);
     }
-    return successMessage(stats);
+    return successMessage(stats, intensity: intensity);
   }
 
-  String failMessage(Stats stats) {
+  String failMessage(
+    Stats stats, {
+    CoachIntensity intensity = CoachIntensity.toxic,
+  }) {
+    final message = _failMessage(stats);
+    return _shapeTone(message, intensity, success: false);
+  }
+
+  String _failMessage(Stats stats) {
     if (stats.currentStreak >= 3) {
       return _pick(streakBrokenMessages);
     }
@@ -40,8 +56,10 @@ class CoachService {
     return _pick(repeatedFailMessages);
   }
 
-  String notificationMessage() {
-    return _pick(notificationMessages);
+  String notificationMessage({
+    CoachIntensity intensity = CoachIntensity.toxic,
+  }) {
+    return _shapeTone(_pick(notificationMessages), intensity, success: false);
   }
 
   String trustLabel(int trustLevel) {
@@ -76,5 +94,23 @@ class CoachService {
 
   String _pick(List<String> messages) {
     return messages[_random.nextInt(messages.length)];
+  }
+
+  String _shapeTone(
+    String message,
+    CoachIntensity intensity, {
+    required bool success,
+  }) {
+    return switch (intensity) {
+      CoachIntensity.sarcastic =>
+        success
+            ? '$message Так держать. Да, это почти похвала.'
+            : '$message Соберись, у тебя всё ещё есть шанс.',
+      CoachIntensity.toxic => message,
+      CoachIntensity.ruthless =>
+        success
+            ? '$message Завтра докажи, что это не случайный всплеск.'
+            : '$message Отговорки в мусор. Завтра без спектакля.',
+    };
   }
 }
