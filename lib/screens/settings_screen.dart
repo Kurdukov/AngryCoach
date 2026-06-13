@@ -126,6 +126,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return '$hour:$minute';
   }
 
+  String get _habitNamePreview {
+    final name = _habitController.text.trim();
+    return name.isEmpty ? 'Новая привычка' : name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -134,12 +139,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Настройки')),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+        child: FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_rounded),
+          label: Text(_saving ? 'Сохраняю...' : 'Сохранить привычку'),
+        ),
+      ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
           children: [
             Text(
-              'Настройки',
+              'Привычка',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                 color: ink,
                 fontWeight: FontWeight.w900,
@@ -148,20 +167,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Одна привычка, один тренер, минимум шансов спрятаться.',
+              'Настрой цель, время пинка и жёсткость тренера.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: AppColors.muted,
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 22),
+            _HabitPreview(
+              name: _habitNamePreview,
+              time: _formatTime(_reminderTime),
+              intensity: _intensity,
+            ),
+            const SizedBox(height: 18),
             _SettingsSection(
-              title: 'Привычка',
+              title: 'Что тренируем',
               child: TextField(
                 controller: _habitController,
+                onChanged: (_) => setState(() {}),
                 textCapitalization: TextCapitalization.sentences,
+                maxLength: 34,
                 decoration: const InputDecoration(
                   labelText: 'Название',
+                  helperText: 'Коротко и конкретно, без романа в трёх томах.',
                   prefixIcon: Icon(Icons.fitness_center_rounded),
                 ),
               ),
@@ -176,6 +204,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'Напоминание',
                     value: _formatTime(_reminderTime),
                     onTap: _pickTime,
+                  ),
+                  const SizedBox(height: 10),
+                  _ReminderPreview(
+                    habitName: _habitNamePreview,
+                    time: _formatTime(_reminderTime),
+                    intensity: _intensity,
                   ),
                   const SizedBox(height: 10),
                   _SettingsTile(
@@ -199,15 +233,151 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 14),
             _DangerZone(onReset: _resetProgress),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? 'Сохраняю...' : 'Сохранить'),
-            ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _HabitPreview extends StatelessWidget {
+  const _HabitPreview({
+    required this.name,
+    required this.time,
+    required this.intensity,
+  });
+
+  final String name;
+  final String time;
+  final CoachIntensity intensity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.lime,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: AppColors.ink,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.sports_martial_arts_rounded,
+              color: AppColors.lime,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$time · ${intensity.label}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReminderPreview extends StatelessWidget {
+  const _ReminderPreview({
+    required this.habitName,
+    required this.time,
+    required this.intensity,
+  });
+
+  final String habitName;
+  final String time;
+  final CoachIntensity intensity;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final body = _bodyText();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkCard : AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: dark ? AppColors.darkStroke : AppColors.stroke,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.notifications_active_rounded,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Превью напоминания · $time',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: ink, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _bodyText() {
+    final coachLine = switch (intensity) {
+      CoachIntensity.sarcastic => 'Тренер почти вежливо напоминает.',
+      CoachIntensity.toxic => 'Тренер уже смотрит недобро.',
+      CoachIntensity.ruthless => 'Тренер не принимает легенды про занятость.',
+    };
+    return '$habitName. $coachLine';
   }
 }
 
