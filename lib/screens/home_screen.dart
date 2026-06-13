@@ -426,117 +426,176 @@ class _TodayPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPending = dailyResult.status == DailyStatus.pending;
     final isSuccess = dailyResult.status == DailyStatus.success;
-    final color = switch (dailyResult.status) {
-      DailyStatus.success => AppColors.lime,
-      DailyStatus.fail => AppColors.pink,
-      DailyStatus.pending => AppColors.yellow,
+    final gradient = switch (dailyResult.status) {
+      DailyStatus.success => const [
+        Color(0xFF07140F),
+        Color(0xFF12422D),
+        Color(0xFFD6B86A),
+      ],
+      DailyStatus.fail => const [
+        Color(0xFF17070D),
+        Color(0xFF6B1934),
+        Color(0xFFE86F91),
+      ],
+      DailyStatus.pending => const [
+        Color(0xFF070A12),
+        Color(0xFF182230),
+        Color(0xFF5E6A7D),
+      ],
     };
+    final panelInk = Colors.white;
+    final panelMuted = Colors.white.withValues(alpha: 0.72);
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      constraints: const BoxConstraints(minHeight: 340),
       decoration: BoxDecoration(
-        color: color,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradient,
+          stops: const [0.0, 0.58, 1.0],
+        ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.ink, width: 1.5),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 28,
+            offset: const Offset(0, 18),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(_statusIcon(dailyResult.status), size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          _statusLabel(dailyResult.status),
-                          style: const TextStyle(
-                            color: AppColors.ink,
-                            fontWeight: FontWeight.w900,
+          Positioned(
+            right: -34,
+            top: 34,
+            child: IgnorePointer(child: AngryAvatar(size: 220)),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 116),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            _statusIcon(dailyResult.status),
+                            size: 24,
+                            color: panelInk,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _statusLabel(dailyResult.status),
+                            style: TextStyle(
+                              color: panelInk,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        habit.name,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: panelInk,
+                              fontWeight: FontWeight.w900,
+                              height: 0.95,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        message,
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: panelMuted,
+                          fontWeight: FontWeight.w800,
+                          height: 1.16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 74),
+                if (isPending)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: onStart,
+                          icon: const Icon(Icons.fitness_center_rounded),
+                          label: const Text('Отчитаться'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.ink,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      habit.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            color: AppColors.ink,
-                            fontWeight: FontWeight.w900,
-                            height: 1.0,
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 58,
+                        height: 58,
+                        child: IconButton.filled(
+                          onPressed: onFail,
+                          icon: const Icon(Icons.close_rounded),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.18,
+                            ),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      message,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AppColors.ink.withValues(alpha: 0.72),
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              const AngryAvatar(size: 74),
-            ],
-          ),
-          const SizedBox(height: 18),
-          if (isPending)
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
+                    ],
+                  )
+                else
+                  FilledButton.icon(
                     onPressed: onStart,
-                    icon: const Icon(Icons.fitness_center_rounded),
-                    label: const Text('Отчитаться'),
+                    icon: Icon(
+                      isSuccess
+                          ? Icons.visibility_rounded
+                          : Icons.replay_rounded,
+                    ),
+                    label: const Text('Открыть отчёт'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.ink,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 58,
-                  height: 58,
-                  child: IconButton.filled(
-                    onPressed: onFail,
-                    icon: const Icon(Icons.close_rounded),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.72),
+                      backgroundColor: Colors.white,
                       foregroundColor: AppColors.ink,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
                     ),
                   ),
-                ),
               ],
-            )
-          else
-            FilledButton.icon(
-              onPressed: onStart,
-              icon: Icon(
-                isSuccess ? Icons.visibility_rounded : Icons.replay_rounded,
+            ),
+          ),
+          Positioned(
+            right: 18,
+            top: 18,
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
               ),
-              label: const Text('Открыть отчёт'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.ink,
-                foregroundColor: Colors.white,
+              child: const Icon(
+                Icons.diamond_rounded,
+                color: AppColors.lime,
+                size: 22,
               ),
             ),
+          ),
         ],
       ),
     );

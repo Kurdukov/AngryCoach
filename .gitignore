@@ -13,3 +13,4 @@ coverage/
 devtools_options.yaml
 android/.kotlin/
 android/app/debug-local.keystore
+assets/images/*_chroma.png
