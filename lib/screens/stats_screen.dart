@@ -74,6 +74,12 @@ class _StatsScreenState extends State<StatsScreen> {
                   _TrustPanel(
                     trustLevel: stats.trustLevel,
                     successRate: successRate,
+                    verdict: _coachVerdict(
+                      trustLevel: stats.trustLevel,
+                      successRate: successRate,
+                      currentStreak: stats.currentStreak,
+                      failDays: failDays,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   GridView.count(
@@ -89,28 +95,30 @@ class _StatsScreenState extends State<StatsScreen> {
                         icon: Icons.local_fire_department_rounded,
                         title: 'Текущая серия',
                         value: '${stats.currentStreak}',
-                        subtitle: 'дней подряд',
+                        subtitle: _streakSubtitle(stats.currentStreak),
                       ),
                       _MetricCard(
                         color: AppColors.lime,
                         icon: Icons.emoji_events_rounded,
                         title: 'Рекорд',
                         value: '${stats.bestStreak}',
-                        subtitle: 'лучший забег',
+                        subtitle: 'личный максимум',
                       ),
                       _MetricCard(
                         color: AppColors.pink,
                         icon: Icons.close_rounded,
                         title: 'Провалы',
                         value: '$failDays',
-                        subtitle: 'в журнале',
+                        subtitle: _failSubtitle(failDays),
                       ),
                       _MetricCard(
                         color: AppColors.blue,
                         icon: Icons.fact_check_rounded,
                         title: 'Дней учёта',
                         value: '$completedDays',
-                        subtitle: 'решений принято',
+                        subtitle: completedDays == 0
+                            ? 'пустой архив'
+                            : 'решений',
                       ),
                     ],
                   ),
@@ -147,13 +155,59 @@ class _StatsScreenState extends State<StatsScreen> {
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
   }
+
+  String _coachVerdict({
+    required int trustLevel,
+    required int successRate,
+    required int currentStreak,
+    required int failDays,
+  }) {
+    if (currentStreak >= 7 && trustLevel >= 70) {
+      return 'Серия уже похожа на дисциплину. Не испорти красивую статистику.';
+    }
+    if (successRate >= 75) {
+      return 'Выглядит прилично. Тренер всё равно проверит завтра.';
+    }
+    if (failDays >= 5 || trustLevel < 35) {
+      return 'Картина тревожная. Отговорки размножаются быстрее прогресса.';
+    }
+    if (successRate == 0) {
+      return 'Данных мало. Тренер пока смотрит молча, но недобро.';
+    }
+    return 'Есть движение, но расслабляться рано. Очень рано.';
+  }
+
+  String _streakSubtitle(int currentStreak) {
+    if (currentStreak == 0) {
+      return 'начни заново';
+    }
+    if (currentStreak >= 7) {
+      return 'держишь темп';
+    }
+    return 'дней подряд';
+  }
+
+  String _failSubtitle(int failDays) {
+    if (failDays == 0) {
+      return 'чисто пока';
+    }
+    if (failDays >= 5) {
+      return 'многовато';
+    }
+    return 'в журнале';
+  }
 }
 
 class _TrustPanel extends StatelessWidget {
-  const _TrustPanel({required this.trustLevel, required this.successRate});
+  const _TrustPanel({
+    required this.trustLevel,
+    required this.successRate,
+    required this.verdict,
+  });
 
   final int trustLevel;
   final int successRate;
+  final String verdict;
 
   @override
   Widget build(BuildContext context) {
@@ -210,6 +264,36 @@ class _TrustPanel extends StatelessWidget {
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.82),
               fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.psychology_alt_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    verdict,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      height: 1.14,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -294,6 +378,7 @@ class _SevenDayStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return Row(
       children: results.asMap().entries.map((entry) {
         final index = entry.key;
@@ -320,11 +405,28 @@ class _SevenDayStrip extends StatelessWidget {
                 color: dark ? const Color(0xFF2A2B32) : AppColors.ink,
               ),
             ),
-            child: Icon(
-              icon,
-              color: result.status == DailyStatus.pending && dark
-                  ? Colors.white
-                  : AppColors.ink,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: result.status == DailyStatus.pending && dark
+                      ? Colors.white
+                      : AppColors.ink,
+                  size: 19,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  labels[index],
+                  style: TextStyle(
+                    color: result.status == DailyStatus.pending && dark
+                        ? Colors.white
+                        : AppColors.ink,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
         );
