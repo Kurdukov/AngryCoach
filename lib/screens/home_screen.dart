@@ -184,30 +184,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Сегодня',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
-                                  color: AppColors.muted,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _headlineText(),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(
-                                  color: ink,
-                                  fontWeight: FontWeight.w900,
-                                  height: 0.95,
-                                ),
-                          ),
-                        ],
+                      child: Text(
+                        _headlineText(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: ink,
+                              fontWeight: FontWeight.w900,
+                              height: 0.95,
+                            ),
                       ),
                     ),
                     _ThemeToggle(),
@@ -301,31 +287,35 @@ class _WeekStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
-    final start = today.subtract(Duration(days: today.weekday - 1));
+    final start = today.subtract(const Duration(days: 3));
     final days = List.generate(7, (index) => start.add(Duration(days: index)));
     const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
     return SizedBox(
       height: 84,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: days.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final day = days[index];
-          final selected =
-              day.day == today.day &&
-              day.month == today.month &&
-              day.year == today.year;
-          return _DayChip(
-            day: day.day.toString(),
-            label: labels[index],
-            selected: selected,
-            status: _statusFor(day),
+      child: Row(
+        children: days.map((day) {
+          final selected = _isSameDay(day, today);
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: _DayChip(
+                day: day.day.toString(),
+                label: labels[day.weekday - 1],
+                selected: selected,
+                status: _statusFor(day),
+              ),
+            ),
           );
-        },
+        }).toList(),
       ),
     );
+  }
+
+  bool _isSameDay(DateTime day, DateTime anotherDay) {
+    return day.day == anotherDay.day &&
+        day.month == anotherDay.month &&
+        day.year == anotherDay.year;
   }
 
   DailyStatus _statusFor(DateTime day) {
@@ -366,7 +356,6 @@ class _DayChip extends StatelessWidget {
     };
 
     return SizedBox(
-      width: 72,
       height: 74,
       child: DecoratedBox(
         decoration: BoxDecoration(
