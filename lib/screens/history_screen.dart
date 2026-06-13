@@ -224,7 +224,7 @@ class _SummaryPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$successRate%',
+            completed == 0 ? '0 дней' : '$successRate%',
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -232,9 +232,14 @@ class _SummaryPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'выполнения по записанным дням',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          Text(
+            completed == 0
+                ? 'журнал пока пустой'
+                : 'выполнения по записанным дням',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 16),
           Row(

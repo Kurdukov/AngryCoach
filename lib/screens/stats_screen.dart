@@ -72,9 +72,11 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                   const SizedBox(height: 16),
                   _TrustPanel(
+                    completedDays: completedDays,
                     trustLevel: stats.trustLevel,
                     successRate: successRate,
                     verdict: _coachVerdict(
+                      completedDays: completedDays,
                       trustLevel: stats.trustLevel,
                       successRate: successRate,
                       currentStreak: stats.currentStreak,
@@ -157,11 +159,15 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   String _coachVerdict({
+    required int completedDays,
     required int trustLevel,
     required int successRate,
     required int currentStreak,
     required int failDays,
   }) {
+    if (completedDays == 0) {
+      return 'Журнал пуст. Первый отчёт решит, кто тут хозяин.';
+    }
     if (currentStreak >= 7 && trustLevel >= 70) {
       return 'Серия уже похожа на дисциплину. Не испорти красивую статистику.';
     }
@@ -200,11 +206,13 @@ class _StatsScreenState extends State<StatsScreen> {
 
 class _TrustPanel extends StatelessWidget {
   const _TrustPanel({
+    required this.completedDays,
     required this.trustLevel,
     required this.successRate,
     required this.verdict,
   });
 
+  final int completedDays;
   final int trustLevel;
   final int successRate;
   final String verdict;
@@ -258,7 +266,9 @@ class _TrustPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Выполнение: $successRate%. Тренер делает вид, что не впечатлён.',
+            completedDays == 0
+                ? 'Пока нет закрытых дней. Нажми отчёт, и тренер начнёт считать.'
+                : 'Выполнение: $successRate%. Тренер делает вид, что не впечатлён.',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(

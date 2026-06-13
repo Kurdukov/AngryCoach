@@ -238,7 +238,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return switch (_dailyResult.status) {
       DailyStatus.success => 'Зачёт принят',
       DailyStatus.fail => 'Провал записан',
-      DailyStatus.pending => 'Тренер ждёт отчёт',
+      DailyStatus.pending =>
+        _hasCompletedHistory ? 'Тренер ждёт отчёт' : 'Первый отчёт ждёт тебя',
     };
   }
 
@@ -246,8 +247,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return switch (_dailyResult.status) {
       DailyStatus.success => 'Сегодня выполнено. Не привыкай к похвале.',
       DailyStatus.fail => 'Сегодня провалено. Тренер записал.',
-      DailyStatus.pending => _message,
+      DailyStatus.pending =>
+        _hasCompletedHistory
+            ? _message
+            : 'История пустая. Самое время перестать обещать и нажать кнопку.',
     };
+  }
+
+  bool get _hasCompletedHistory {
+    return _dailyHistory.any((result) => result.status != DailyStatus.pending);
   }
 
   DailyStatus? _previousCompletedStatus() {
