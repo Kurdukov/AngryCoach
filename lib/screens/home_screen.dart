@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/coach_message.dart';
+import '../models/daily_result.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
 import '../services/coach_service.dart';
@@ -10,6 +11,7 @@ import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
 import 'focus_screen.dart';
 import 'history_screen.dart';
+import 'settings_screen.dart';
 import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   Habit? _habit;
   Stats _stats = Stats.initial();
+  DailyResult _dailyResult = DailyResult.none();
   String _message =
       'Я честно ожидал от тебя ноль, но ты всё равно умудряешься удивлять.';
   bool _loading = true;
@@ -36,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final habit = await StorageService.instance.loadHabit();
     final stats = await StorageService.instance.loadStats();
     final message = await StorageService.instance.loadLastCoachMessage();
+    final dailyResult = await StorageService.instance.loadDailyResult();
     if (!mounted) {
       return;
     }
@@ -43,24 +47,35 @@ class _HomeScreenState extends State<HomeScreen> {
       _habit = habit;
       _stats = stats;
       _message = message;
+      _dailyResult = dailyResult;
       _loading = false;
     });
   }
 
   Future<void> _complete() async {
+    if (_dailyResult.isDoneToday) {
+      _showAlreadyDone();
+      return;
+    }
     final nextStats = CoachService.instance.applySuccess(_stats);
     final message = CoachService.instance.successMessage(nextStats);
     await _saveAction(nextStats, message, 'success');
   }
 
   Future<void> _fail() async {
+    if (_dailyResult.isDoneToday) {
+      _showAlreadyDone();
+      return;
+    }
     final message = CoachService.instance.failMessage(_stats);
     final nextStats = CoachService.instance.applyFailure(_stats);
     await _saveAction(nextStats, message, 'fail');
   }
 
   Future<void> _saveAction(Stats stats, String message, String type) async {
+    final status = type == 'success' ? DailyStatus.success : DailyStatus.fail;
     await StorageService.instance.saveStats(stats);
+    await StorageService.instance.saveDailyResult(status);
     await StorageService.instance.saveLastCoachMessage(message);
     await StorageService.instance.addHistoryMessage(
       CoachMessage(text: message, date: DateTime.now(), type: type),
@@ -73,7 +88,15 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _stats = stats;
       _message = message;
+      _dailyResult = DailyResult(dateKey: DailyResult.todayKey, status: status);
     });
+  }
+
+  void _showAlreadyDone() {
+    final text = _dailyResult.status == DailyStatus.success
+        ? 'Сегодня уже засчитано. Не жадничай, герой.'
+        : 'Сегодня уже провалено. Дважды падать в одну яму не надо.';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _openFocus(Habit habit) async {
@@ -82,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => FocusScreen(
           habit: habit,
           stats: _stats,
+          dailyResult: _dailyResult,
           onComplete: _complete,
           onFail: _fail,
         ),
@@ -101,6 +125,13 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const HistoryScreen()));
+    await _load();
+  }
+
+  Future<void> _openSettings(Habit habit) async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => SettingsScreen(habit: habit)));
     await _load();
   }
 
@@ -144,8 +175,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     _RoundIcon(
-                      icon: Icons.history_rounded,
-                      onTap: _openHistory,
+                      icon: Icons.settings_rounded,
+                      onTap: () => _openSettings(habit),
                     ),
                     const SizedBox(width: 10),
                     _ThemeToggle(),
@@ -167,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icons.fitness_center_rounded,
                       title: habit.name,
                       subtitle: 'Нажми и встреться с тренером',
-                      trailing: Icons.radio_button_unchecked_rounded,
+                      trailing: _statusIcon(),
                       onTap: () => _openFocus(habit),
                     ),
                     _HabitCard(
@@ -184,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           : const Color(0xFFF0F1F4),
                       icon: Icons.chat_bubble_rounded,
                       title: 'Последний наезд',
-                      subtitle: _message,
+                      subtitle: _todayStatusText(),
                       trailing: Icons.check_circle_rounded,
                       muted: true,
                       onTap: _openHistory,
@@ -195,7 +226,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       title: 'Провалы',
                       subtitle: '${_stats.missedDays} отговорок в архиве',
                       trailing: Icons.radio_button_unchecked_rounded,
-                      onTap: _fail,
+                      onTap: _dailyResult.isDoneToday
+                          ? _showAlreadyDone
+                          : _fail,
                     ),
                     _HabitCard(
                       color: AppColors.blue,
@@ -234,6 +267,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  IconData _statusIcon() {
+    return switch (_dailyResult.status) {
+      DailyStatus.success => Icons.check_circle_rounded,
+      DailyStatus.fail => Icons.cancel_rounded,
+      DailyStatus.pending => Icons.radio_button_unchecked_rounded,
+    };
+  }
+
+  String _todayStatusText() {
+    return switch (_dailyResult.status) {
+      DailyStatus.success => 'Сегодня выполнено. Не привыкай к похвале.',
+      DailyStatus.fail => 'Сегодня провалено. Тренер записал.',
+      DailyStatus.pending => _message,
+    };
   }
 }
 

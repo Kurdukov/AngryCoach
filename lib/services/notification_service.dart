@@ -33,7 +33,10 @@ class NotificationService {
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
-  Future<void> scheduleDailyReminder(String notificationTime) async {
+  Future<void> scheduleDailyReminder(
+    String notificationTime, {
+    String? habitName,
+  }) async {
     final parts = notificationTime.split(':');
     final hour = int.tryParse(parts.first) ?? 9;
     final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
@@ -50,10 +53,15 @@ class NotificationService {
       scheduled = scheduled.add(const Duration(days: 1));
     }
 
+    await _plugin.cancel(1);
+    final body = habitName == null
+        ? CoachService.instance.notificationMessage()
+        : '$habitName. ${CoachService.instance.notificationMessage()}';
+
     await _plugin.zonedSchedule(
       1,
       'Angry Coach',
-      CoachService.instance.notificationMessage(),
+      body,
       scheduled,
       const NotificationDetails(
         android: AndroidNotificationDetails(

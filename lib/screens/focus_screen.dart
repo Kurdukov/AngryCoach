@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/daily_result.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
 import '../theme/app_colors.dart';
@@ -10,17 +11,21 @@ class FocusScreen extends StatelessWidget {
     super.key,
     required this.habit,
     required this.stats,
+    required this.dailyResult,
     required this.onComplete,
     required this.onFail,
   });
 
   final Habit habit;
   final Stats stats;
+  final DailyResult dailyResult;
   final Future<void> Function() onComplete;
   final Future<void> Function() onFail;
 
   @override
   Widget build(BuildContext context) {
+    final locked = dailyResult.isDoneToday;
+
     return Scaffold(
       backgroundColor: AppColors.lime,
       body: SafeArea(
@@ -83,14 +88,18 @@ class FocusScreen extends StatelessWidget {
                 icon: Icons.mood_bad_rounded,
                 text: 'Доверие тренера: ${stats.trustLevel}%',
               ),
+              const SizedBox(height: 12),
+              _Tip(icon: _statusIcon(), text: _statusText()),
               const SizedBox(height: 22),
               FilledButton(
-                onPressed: () async {
-                  await onComplete();
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                },
+                onPressed: locked
+                    ? null
+                    : () async {
+                        await onComplete();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: AppColors.ink,
@@ -99,12 +108,14 @@ class FocusScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               TextButton(
-                onPressed: () async {
-                  await onFail();
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                },
+                onPressed: locked
+                    ? null
+                    : () async {
+                        await onFail();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
                 child: const Text(
                   'Я провалился, тренер',
                   style: TextStyle(
@@ -118,6 +129,22 @@ class FocusScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  IconData _statusIcon() {
+    return switch (dailyResult.status) {
+      DailyStatus.success => Icons.check_circle_rounded,
+      DailyStatus.fail => Icons.cancel_rounded,
+      DailyStatus.pending => Icons.radio_button_unchecked_rounded,
+    };
+  }
+
+  String _statusText() {
+    return switch (dailyResult.status) {
+      DailyStatus.success => 'Сегодня выполнено. Да, тренер тоже удивлен.',
+      DailyStatus.fail => 'Сегодня провалено. Завтра будет новый раунд.',
+      DailyStatus.pending => 'Сегодня еще ждем результата.',
+    };
   }
 }
 

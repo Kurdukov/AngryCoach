@@ -106,7 +106,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await StorageService.instance.saveHabit(
       Habit(name: name, notificationTime: time),
     );
-    await NotificationService.instance.scheduleDailyReminder(time);
+    await NotificationService.instance.scheduleDailyReminder(
+      time,
+      habitName: name,
+    );
 
     if (!mounted) {
       return;

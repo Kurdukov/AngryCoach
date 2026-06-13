@@ -7,6 +7,7 @@ plugins {
 android {
     namespace = "com.kurdukov.angrycoach"
     compileSdk = flutter.compileSdkVersion
+    buildToolsVersion = "36.1.0"
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -23,6 +24,15 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug-local.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

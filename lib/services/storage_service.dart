@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/coach_messages.dart';
 import '../models/coach_message.dart';
+import '../models/daily_result.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
 
@@ -18,6 +19,8 @@ class StorageService {
   static const _trustLevelKey = 'trustLevel';
   static const _messageHistoryKey = 'messageHistory';
   static const _lastCoachMessageKey = 'lastCoachMessage';
+  static const _dailyResultDateKey = 'dailyResultDate';
+  static const _dailyResultStatusKey = 'dailyResultStatus';
 
   Future<Habit?> loadHabit() async {
     final prefs = await SharedPreferences.getInstance();
@@ -36,6 +39,21 @@ class StorageService {
     await saveStats(Stats.initial());
     await prefs.setString(_lastCoachMessageKey, neutralMessages[1]);
     await prefs.setString(_messageHistoryKey, CoachMessage.listToJson([]));
+    await clearDailyResult();
+  }
+
+  Future<void> updateHabit(Habit habit) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_habitNameKey, habit.name);
+    await prefs.setString(_notificationTimeKey, habit.notificationTime);
+  }
+
+  Future<void> resetProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    await saveStats(Stats.initial());
+    await prefs.setString(_lastCoachMessageKey, neutralMessages[1]);
+    await prefs.setString(_messageHistoryKey, CoachMessage.listToJson([]));
+    await clearDailyResult();
   }
 
   Future<Stats> loadStats() async {
@@ -80,5 +98,31 @@ class StorageService {
     history.insert(0, message);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_messageHistoryKey, CoachMessage.listToJson(history));
+  }
+
+  Future<DailyResult> loadDailyResult() async {
+    final prefs = await SharedPreferences.getInstance();
+    final dateKey = prefs.getString(_dailyResultDateKey) ?? '';
+    final statusName = prefs.getString(_dailyResultStatusKey) ?? '';
+    final status = DailyStatus.values.firstWhere(
+      (value) => value.name == statusName,
+      orElse: () => DailyStatus.pending,
+    );
+    if (dateKey != DailyResult.todayKey) {
+      return DailyResult.none();
+    }
+    return DailyResult(dateKey: dateKey, status: status);
+  }
+
+  Future<void> saveDailyResult(DailyStatus status) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_dailyResultDateKey, DailyResult.todayKey);
+    await prefs.setString(_dailyResultStatusKey, status.name);
+  }
+
+  Future<void> clearDailyResult() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_dailyResultDateKey);
+    await prefs.remove(_dailyResultStatusKey);
   }
 }
