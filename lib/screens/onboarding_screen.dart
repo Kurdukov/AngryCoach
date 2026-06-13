@@ -173,33 +173,28 @@ class _WelcomeStep extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: _ThemeButton(isOnColor: true),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 18),
+              const _StepIndicator(current: 0, total: 3, onColor: true),
+              const SizedBox(height: 26),
               Text(
-                'Строй привычки.\nБойся тренера.',
+                'Angry Coach',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
                   height: 0.95,
                 ),
               ),
-              const Spacer(),
-              Center(
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Container(
-                      width: 260,
-                      height: 86,
-                      decoration: BoxDecoration(
-                        color: AppColors.lime,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.ink, width: 3),
-                      ),
-                    ),
-                    const AngryAvatar(size: 260),
-                  ],
+              const SizedBox(height: 10),
+              const Text(
+                'Трекер привычек, который не делает вид, что ты молодец просто за установку приложения.',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  height: 1.18,
                 ),
               ),
+              const Spacer(),
+              const _HeroCoach(),
               const Spacer(),
               SizedBox(
                 width: double.infinity,
@@ -213,16 +208,13 @@ class _WelcomeStep extends StatelessWidget {
                   child: const Text('Начать'),
                 ),
               ),
-              const SizedBox(height: 18),
-              const Center(
-                child: Text(
-                  'Без аккаунта. Без пощады.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    decoration: TextDecoration.underline,
-                    decorationColor: Colors.white,
-                  ),
+              const SizedBox(height: 14),
+              const Text(
+                'Без аккаунта. Данные остаются на телефоне.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -256,13 +248,23 @@ class _HabitStep extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _TopBar(onBack: onBack),
-            const SizedBox(height: 28),
+            const SizedBox(height: 18),
+            const _StepIndicator(current: 1, total: 3),
+            const SizedBox(height: 24),
             Text(
-              'Доброе утро,\nбудущее разочарование',
+              'Выбери одну привычку',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                 color: ink,
                 fontWeight: FontWeight.w900,
                 height: 0.98,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Одну. Не весь список фантазий на новую жизнь.',
+              style: TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 24),
@@ -279,15 +281,15 @@ class _HabitStep extends StatelessWidget {
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: const [
-                _Pill(text: 'Тренировка'),
-                _Pill(text: 'Чтение'),
-                _Pill(text: 'Без сахара'),
+              children: [
+                _Pill(text: 'Тренировка', controller: controller),
+                _Pill(text: 'Чтение', controller: controller),
+                _Pill(text: 'Без сахара', controller: controller),
               ],
             ),
             const Spacer(),
             _CoachBubble(
-              text: 'Одна привычка. Не тащи сюда весь список своих фантазий.',
+              text: 'Начни с малого. Большие планы у тебя уже проваливались.',
               color: AppColors.yellow,
             ),
             const SizedBox(height: 18),
@@ -330,18 +332,19 @@ class _ReminderStep extends StatelessWidget {
             children: [
               _TopBar(onBack: onBack, onColor: true),
               const SizedBox(height: 18),
-              Center(child: AngryAvatar(size: 230)),
-              const SizedBox(height: 18),
-              Center(
-                child: Text(
-                  reminderTime,
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
+              const _StepIndicator(current: 2, total: 3, onColor: true),
+              const SizedBox(height: 22),
+              Text(
+                'Когда тебя пинать?',
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w900,
+                  height: 0.98,
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 14),
+              _TimeCard(time: reminderTime, onTap: onPickTime),
+              const SizedBox(height: 16),
               _TipTile(icon: Icons.task_alt_rounded, text: habit),
               const SizedBox(height: 12),
               _TipTile(
@@ -429,20 +432,132 @@ class _ThemeButton extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({required this.text});
+class _StepIndicator extends StatelessWidget {
+  const _StepIndicator({
+    required this.current,
+    required this.total,
+    this.onColor = false,
+  });
 
-  final String text;
+  final int current;
+  final int total;
+  final bool onColor;
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
+    return Row(
+      children: List.generate(total, (index) {
+        final active = index <= current;
+        return Expanded(
+          child: Container(
+            height: 5,
+            margin: EdgeInsets.only(right: index == total - 1 ? 0 : 8),
+            decoration: BoxDecoration(
+              color: active
+                  ? (onColor ? Colors.white : AppColors.primary)
+                  : (onColor
+                        ? Colors.white.withValues(alpha: 0.22)
+                        : AppColors.stroke),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _HeroCoach extends StatelessWidget {
+  const _HeroCoach();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink, width: 2),
+      ),
+      child: Column(
+        children: [
+          const AngryAvatar(size: 210),
+          const SizedBox(height: 10),
+          Text(
+            'Одна привычка. Один отчёт в день. Никакой мотивационной ваты.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.ink,
+              fontWeight: FontWeight.w900,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.controller});
+
+  final String text;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      onPressed: () => controller.text = text,
       label: Text(text),
+      avatar: const Icon(Icons.add_rounded, size: 18),
       backgroundColor: AppColors.lime,
-      side: BorderSide.none,
+      side: const BorderSide(color: AppColors.ink),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       labelStyle: const TextStyle(
         color: AppColors.ink,
         fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _TimeCard extends StatelessWidget {
+  const _TimeCard({required this.time, required this.onTap});
+
+  final String time;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Ink(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.42),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.alarm_rounded, color: AppColors.ink, size: 30),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                time,
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w900,
+                  height: 0.95,
+                ),
+              ),
+            ),
+            const Icon(Icons.edit_rounded, color: AppColors.ink),
+          ],
+        ),
       ),
     );
   }
