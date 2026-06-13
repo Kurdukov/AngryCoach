@@ -21,6 +21,7 @@ class StorageService {
   static const _lastCoachMessageKey = 'lastCoachMessage';
   static const _dailyResultDateKey = 'dailyResultDate';
   static const _dailyResultStatusKey = 'dailyResultStatus';
+  static const _dailyHistoryKey = 'dailyHistory';
 
   Future<Habit?> loadHabit() async {
     final prefs = await SharedPreferences.getInstance();
@@ -39,6 +40,7 @@ class StorageService {
     await saveStats(Stats.initial());
     await prefs.setString(_lastCoachMessageKey, neutralMessages[1]);
     await prefs.setString(_messageHistoryKey, CoachMessage.listToJson([]));
+    await prefs.setString(_dailyHistoryKey, DailyResult.listToJson([]));
     await clearDailyResult();
   }
 
@@ -53,6 +55,7 @@ class StorageService {
     await saveStats(Stats.initial());
     await prefs.setString(_lastCoachMessageKey, neutralMessages[1]);
     await prefs.setString(_messageHistoryKey, CoachMessage.listToJson([]));
+    await prefs.setString(_dailyHistoryKey, DailyResult.listToJson([]));
     await clearDailyResult();
   }
 
@@ -118,11 +121,39 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_dailyResultDateKey, DailyResult.todayKey);
     await prefs.setString(_dailyResultStatusKey, status.name);
+    await _upsertDailyHistory(
+      DailyResult(dateKey: DailyResult.todayKey, status: status),
+    );
   }
 
   Future<void> clearDailyResult() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_dailyResultDateKey);
     await prefs.remove(_dailyResultStatusKey);
+  }
+
+  Future<List<DailyResult>> loadDailyHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = prefs.getString(_dailyHistoryKey);
+    if (encoded == null || encoded.isEmpty) {
+      return [];
+    }
+    return DailyResult.listFromJson(encoded);
+  }
+
+  Future<void> _upsertDailyHistory(DailyResult result) async {
+    final history = await loadDailyHistory();
+    final index = history.indexWhere((item) => item.dateKey == result.dateKey);
+    if (index == -1) {
+      history.insert(0, result);
+    } else {
+      history[index] = result;
+    }
+    history.sort((a, b) => b.dateKey.compareTo(a.dateKey));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _dailyHistoryKey,
+      DailyResult.listToJson(history.take(90).toList()),
+    );
   }
 }

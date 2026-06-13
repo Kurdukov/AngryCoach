@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../data/coach_messages.dart';
+import '../models/daily_result.dart';
 import '../models/stats.dart';
 
 class CoachService {
@@ -16,7 +17,20 @@ class CoachService {
     return _pick(pool);
   }
 
+  String contextualSuccessMessage(Stats stats, DailyStatus? previousStatus) {
+    if (stats.currentStreak == 1 && previousStatus == null) {
+      return _pick(firstSuccessMessages);
+    }
+    if (previousStatus == DailyStatus.fail) {
+      return _pick(comebackMessages);
+    }
+    return successMessage(stats);
+  }
+
   String failMessage(Stats stats) {
+    if (stats.currentStreak >= 3) {
+      return _pick(streakBrokenMessages);
+    }
     if (stats.missedDays == 0) {
       return _pick(firstFailMessages);
     }

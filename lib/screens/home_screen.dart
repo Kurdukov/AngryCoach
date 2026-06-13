@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Habit? _habit;
   Stats _stats = Stats.initial();
   DailyResult _dailyResult = DailyResult.none();
+  List<DailyResult> _dailyHistory = const [];
   String _message =
       'Я честно ожидал от тебя ноль, но ты всё равно умудряешься удивлять.';
   bool _loading = true;
@@ -40,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final stats = await StorageService.instance.loadStats();
     final message = await StorageService.instance.loadLastCoachMessage();
     final dailyResult = await StorageService.instance.loadDailyResult();
+    final dailyHistory = await StorageService.instance.loadDailyHistory();
     if (!mounted) {
       return;
     }
@@ -48,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _stats = stats;
       _message = message;
       _dailyResult = dailyResult;
+      _dailyHistory = dailyHistory;
       _loading = false;
     });
   }
@@ -58,7 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     final nextStats = CoachService.instance.applySuccess(_stats);
-    final message = CoachService.instance.successMessage(nextStats);
+    final message = CoachService.instance.contextualSuccessMessage(
+      nextStats,
+      _previousCompletedStatus(),
+    );
     await _saveAction(nextStats, message, 'success');
   }
 
@@ -89,6 +95,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _stats = stats;
       _message = message;
       _dailyResult = DailyResult(dateKey: DailyResult.todayKey, status: status);
+      _dailyHistory = [
+        DailyResult(dateKey: DailyResult.todayKey, status: status),
+        ..._dailyHistory.where(
+          (result) => result.dateKey != DailyResult.todayKey,
+        ),
+      ];
     });
   }
 
@@ -183,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 22),
-                _WeekStrip(),
+                _WeekStrip(results: _dailyHistory),
                 const SizedBox(height: 22),
                 GridView.count(
                   crossAxisCount: 2,
@@ -234,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: AppColors.blue,
                       icon: Icons.emoji_events_rounded,
                       title: 'Лучшая серия',
-                      subtitle: '${_stats.bestStreak} дней до краха',
+                      subtitle: _weekSummary(),
                       trailing: Icons.radio_button_unchecked_rounded,
                       onTap: _openStats,
                     ),
@@ -284,9 +296,57 @@ class _HomeScreenState extends State<HomeScreen> {
       DailyStatus.pending => _message,
     };
   }
+
+  String _weekSummary() {
+    final lastSeven = _lastDays(7);
+    final successCount = lastSeven
+        .where((result) => result.status == DailyStatus.success)
+        .length;
+    final failCount = lastSeven
+        .where((result) => result.status == DailyStatus.fail)
+        .length;
+    if (successCount == 0 && failCount == 0) {
+      return '${_stats.bestStreak} дней до краха';
+    }
+    return '$successCount побед, $failCount провалов за неделю';
+  }
+
+  List<DailyResult> _lastDays(int count) {
+    final today = DateTime.now();
+    return List.generate(count, (index) {
+      final day = today.subtract(Duration(days: index));
+      final key = _dateKey(day);
+      return _dailyHistory.firstWhere(
+        (result) => result.dateKey == key,
+        orElse: () => DailyResult(dateKey: key, status: DailyStatus.pending),
+      );
+    });
+  }
+
+  String _dateKey(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  DailyStatus? _previousCompletedStatus() {
+    for (final result in _dailyHistory) {
+      if (result.dateKey == DailyResult.todayKey) {
+        continue;
+      }
+      if (result.status != DailyStatus.pending) {
+        return result.status;
+      }
+    }
+    return null;
+  }
 }
 
 class _WeekStrip extends StatelessWidget {
+  const _WeekStrip({required this.results});
+
+  final List<DailyResult> results;
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -310,10 +370,24 @@ class _WeekStrip extends StatelessWidget {
             day: day.day.toString(),
             label: labels[index],
             selected: selected,
+            status: _statusFor(day),
           );
         },
       ),
     );
+  }
+
+  DailyStatus _statusFor(DateTime day) {
+    final key =
+        '${day.year.toString().padLeft(4, '0')}-'
+        '${day.month.toString().padLeft(2, '0')}-'
+        '${day.day.toString().padLeft(2, '0')}';
+    return results
+        .firstWhere(
+          (result) => result.dateKey == key,
+          orElse: () => DailyResult(dateKey: key, status: DailyStatus.pending),
+        )
+        .status;
   }
 }
 
@@ -322,16 +396,23 @@ class _DayChip extends StatelessWidget {
     required this.day,
     required this.label,
     required this.selected,
+    required this.status,
   });
 
   final String day;
   final String label;
   final bool selected;
+  final DailyStatus status;
 
   @override
   Widget build(BuildContext context) {
     final color = selected ? AppColors.ink : AppColors.lime;
     final textColor = selected ? Colors.white : AppColors.ink;
+    final statusIcon = switch (status) {
+      DailyStatus.success => Icons.check_rounded,
+      DailyStatus.fail => Icons.close_rounded,
+      DailyStatus.pending => null,
+    };
 
     return Container(
       width: 72,
@@ -354,6 +435,12 @@ class _DayChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
+          ),
+          SizedBox(
+            height: 16,
+            child: statusIcon == null
+                ? null
+                : Icon(statusIcon, color: textColor, size: 16),
           ),
         ],
       ),
