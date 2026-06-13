@@ -223,7 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 _TodayPanel(
                   habit: habit,
-                  stats: _stats,
                   dailyResult: _dailyResult,
                   message: _todayStatusText(),
                   onStart: () => _openFocus(habit),
@@ -484,7 +483,6 @@ class _DayChip extends StatelessWidget {
 class _TodayPanel extends StatelessWidget {
   const _TodayPanel({
     required this.habit,
-    required this.stats,
     required this.dailyResult,
     required this.message,
     required this.onStart,
@@ -492,7 +490,6 @@ class _TodayPanel extends StatelessWidget {
   });
 
   final Habit habit;
-  final Stats stats;
   final DailyResult dailyResult;
   final String message;
   final VoidCallback onStart;
@@ -568,41 +565,50 @@ class _TodayPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: isPending ? onStart : onStart,
-                  icon: Icon(
-                    isSuccess
-                        ? Icons.visibility_rounded
-                        : Icons.fitness_center_rounded,
-                  ),
-                  label: Text(isPending ? 'Отчитаться' : 'Открыть'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.ink,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 58,
-                height: 58,
-                child: IconButton.filled(
-                  onPressed: onFail,
-                  icon: const Icon(Icons.close_rounded),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.72),
-                    foregroundColor: AppColors.ink,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+          if (isPending)
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onStart,
+                    icon: const Icon(Icons.fitness_center_rounded),
+                    label: const Text('Отчитаться'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.ink,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 58,
+                  height: 58,
+                  child: IconButton.filled(
+                    onPressed: onFail,
+                    icon: const Icon(Icons.close_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.72),
+                      foregroundColor: AppColors.ink,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            FilledButton.icon(
+              onPressed: onStart,
+              icon: Icon(
+                isSuccess ? Icons.visibility_rounded : Icons.replay_rounded,
               ),
-            ],
-          ),
+              label: const Text('Открыть отчёт'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.ink,
+                foregroundColor: Colors.white,
+              ),
+            ),
         ],
       ),
     );
