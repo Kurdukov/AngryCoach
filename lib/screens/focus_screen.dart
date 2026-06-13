@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../models/daily_result.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
+import '../services/coach_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/angry_avatar.dart';
 
-class FocusScreen extends StatelessWidget {
+class FocusScreen extends StatefulWidget {
   const FocusScreen({
     super.key,
     required this.habit,
@@ -23,9 +24,41 @@ class FocusScreen extends StatelessWidget {
   final Future<void> Function() onFail;
 
   @override
+  State<FocusScreen> createState() => _FocusScreenState();
+}
+
+class _FocusScreenState extends State<FocusScreen> {
+  DailyStatus? _resolvedStatus;
+  Stats? _resolvedStats;
+  bool _submitting = false;
+
+  DailyStatus get _status => _resolvedStatus ?? widget.dailyResult.status;
+  Stats get _displayStats => _resolvedStats ?? widget.stats;
+
+  Future<void> _submit(DailyStatus status) async {
+    setState(() => _submitting = true);
+    if (status == DailyStatus.success) {
+      await widget.onComplete();
+    } else {
+      await widget.onFail();
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _resolvedStatus = status;
+      _resolvedStats = status == DailyStatus.success
+          ? CoachService.instance.applySuccess(widget.stats)
+          : CoachService.instance.applyFailure(widget.stats);
+      _submitting = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final locked = dailyResult.isDoneToday;
-    final statusColor = switch (dailyResult.status) {
+    final status = _status;
+    final locked = status != DailyStatus.pending;
+    final statusColor = switch (status) {
       DailyStatus.success => AppColors.lime,
       DailyStatus.fail => AppColors.pink,
       DailyStatus.pending => AppColors.yellow,
@@ -55,12 +88,12 @@ class FocusScreen extends StatelessWidget {
                           color: AppColors.ink,
                         ),
                         const Spacer(),
-                        _StatusBadge(status: dailyResult.status),
+                        _StatusBadge(status: status),
                       ],
                     ),
                     SizedBox(height: compact ? 18 : 28),
                     Text(
-                      locked ? _lockedTitle() : 'Ежедневный отчёт',
+                      locked ? _lockedTitle(status) : 'Ежедневный отчёт',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         color: AppColors.ink,
                         fontWeight: FontWeight.w900,
@@ -69,38 +102,45 @@ class FocusScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     _CoachPanel(
-                      habitName: habit.name,
-                      message: _coachText(),
+                      habitName: widget.habit.name,
+                      message: _coachText(status),
                       compact: compact,
                     ),
                     const SizedBox(height: 14),
                     _ContextGrid(
-                      reminderTime: habit.notificationTime,
-                      currentStreak: stats.currentStreak,
-                      trustLevel: stats.trustLevel,
-                      bestStreak: stats.bestStreak,
+                      reminderTime: widget.habit.notificationTime,
+                      currentStreak: _displayStats.currentStreak,
+                      trustLevel: _displayStats.trustLevel,
+                      bestStreak: _displayStats.bestStreak,
                     ),
                     SizedBox(height: compact ? 18 : 26),
-                    if (locked)
+                    if (locked) ...[
+                      _ResultPanel(status: status),
+                      const SizedBox(height: 12),
                       FilledButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.check_rounded),
-                        label: const Text('Понятно'),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Вернуться'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.ink,
                           foregroundColor: Colors.white,
                         ),
-                      )
-                    else ...[
+                      ),
+                    ] else ...[
                       FilledButton.icon(
-                        onPressed: () async {
-                          await onComplete();
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
-                        icon: const Icon(Icons.check_circle_rounded),
-                        label: const Text('Выполнил'),
+                        onPressed: _submitting
+                            ? null
+                            : () => _submit(DailyStatus.success),
+                        icon: _submitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.check_circle_rounded),
+                        label: Text(_submitting ? 'Сохраняю...' : 'Выполнил'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.ink,
                           foregroundColor: Colors.white,
@@ -108,12 +148,9 @@ class FocusScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       OutlinedButton.icon(
-                        onPressed: () async {
-                          await onFail();
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
+                        onPressed: _submitting
+                            ? null
+                            : () => _submit(DailyStatus.fail),
                         icon: const Icon(Icons.cancel_rounded),
                         label: const Text('Провалил'),
                         style: OutlinedButton.styleFrom(
@@ -135,22 +172,77 @@ class FocusScreen extends StatelessWidget {
     );
   }
 
-  String _lockedTitle() {
-    return switch (dailyResult.status) {
+  String _lockedTitle(DailyStatus status) {
+    return switch (status) {
       DailyStatus.success => 'Зачёт принят',
       DailyStatus.fail => 'Провал записан',
       DailyStatus.pending => 'Ежедневный отчёт',
     };
   }
 
-  String _coachText() {
-    return switch (dailyResult.status) {
+  String _coachText(DailyStatus status) {
+    return switch (status) {
       DailyStatus.success =>
         'Сегодня выполнено. Тренер морщится, но факт есть.',
       DailyStatus.fail => 'Сегодня провалено. Завтра будет новый раунд.',
       DailyStatus.pending =>
         'Докладывай честно. Тренер всё равно почувствует слабину.',
     };
+  }
+}
+
+class _ResultPanel extends StatelessWidget {
+  const _ResultPanel({required this.status});
+
+  final DailyStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final success = status == DailyStatus.success;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.ink.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            success ? Icons.trending_up_rounded : Icons.warning_rounded,
+            color: AppColors.ink,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  success ? 'День закрыт' : 'День записан',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  success
+                      ? 'Серия и доверие обновлены. Завтра тренер снова спросит.'
+                      : 'Провал сохранён честно. Завтра будет шанс вернуть уважение.',
+                  style: TextStyle(
+                    color: AppColors.ink.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w800,
+                    height: 1.16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
