@@ -210,11 +210,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    _RoundIcon(
-                      icon: Icons.settings_rounded,
-                      onTap: () => _openSettings(habit),
-                    ),
-                    const SizedBox(width: 10),
                     _ThemeToggle(),
                   ],
                 ),
@@ -244,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onStats: _openStats,
                 onAdd: () => _openFocus(habit),
                 onCoach: _openHistory,
+                onSettings: () => _openSettings(habit),
               ),
             ),
           ],
@@ -649,24 +645,6 @@ class _MiniMetric extends StatelessWidget {
   }
 }
 
-class _RoundIcon extends StatelessWidget {
-  const _RoundIcon({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton.filledTonal(
-      onPressed: onTap,
-      icon: Icon(icon),
-      style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
-}
-
 class _ThemeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -688,11 +666,13 @@ class _BottomDock extends StatelessWidget {
     required this.onStats,
     required this.onAdd,
     required this.onCoach,
+    required this.onSettings,
   });
 
   final VoidCallback onStats;
   final VoidCallback onAdd;
   final VoidCallback onCoach;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -718,10 +698,8 @@ class _BottomDock extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: onStats,
-            icon: const Icon(Icons.bar_chart_rounded),
-          ),
+          _DockIcon(icon: Icons.bar_chart_rounded, onTap: onStats),
+          _DockIcon(icon: Icons.history_rounded, onTap: onCoach),
           SizedBox(
             width: 58,
             height: 58,
@@ -736,11 +714,26 @@ class _BottomDock extends StatelessWidget {
               child: const Icon(Icons.add_rounded),
             ),
           ),
-          IconButton(
-            onPressed: onCoach,
-            icon: const Icon(Icons.history_rounded),
-          ),
+          _DockIcon(icon: Icons.settings_rounded, onTap: onSettings),
         ],
+      ),
+    );
+  }
+}
+
+class _DockIcon extends StatelessWidget {
+  const _DockIcon({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon),
+      style: IconButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
