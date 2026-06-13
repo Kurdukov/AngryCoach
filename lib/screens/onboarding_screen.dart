@@ -192,7 +192,7 @@ class _WelcomeStep extends StatelessWidget {
                       height: 86,
                       decoration: BoxDecoration(
                         color: AppColors.lime,
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.ink, width: 3),
                       ),
                     ),
@@ -460,7 +460,8 @@ class _CoachBubble extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
@@ -494,12 +495,13 @@ class _TipTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(8),
       child: Ink(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.38),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
         ),
         child: Row(
           children: [

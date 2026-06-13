@@ -361,7 +361,7 @@ class _DayChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.ink : AppColors.lime;
+    final color = selected ? AppColors.primary : AppColors.lime;
     final textColor = selected ? Colors.white : AppColors.ink;
     final statusIcon = switch (status) {
       DailyStatus.success => Icons.check_rounded,
@@ -375,7 +375,7 @@ class _DayChip extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Stack(
           children: [
@@ -443,7 +443,8 @@ class _TodayPanel extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,7 +525,7 @@ class _TodayPanel extends StatelessWidget {
                       backgroundColor: Colors.white.withValues(alpha: 0.72),
                       foregroundColor: AppColors.ink,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
@@ -615,7 +616,8 @@ class _MiniMetric extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,7 +661,7 @@ class _RoundIcon extends StatelessWidget {
       onPressed: onTap,
       icon: Icon(icon),
       style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -675,7 +677,7 @@ class _ThemeToggle extends StatelessWidget {
         controller.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
       ),
       style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -697,16 +699,19 @@ class _BottomDock extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      height: 68,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: dark ? AppColors.darkStroke : AppColors.stroke,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -725,7 +730,7 @@ class _BottomDock extends StatelessWidget {
               style: FilledButton.styleFrom(
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               child: const Icon(Icons.add_rounded),

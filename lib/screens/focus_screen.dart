@@ -186,7 +186,8 @@ class _Tip extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink.withValues(alpha: 0.16)),
       ),
       child: Row(
         children: [

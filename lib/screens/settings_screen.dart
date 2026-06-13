@@ -205,7 +205,10 @@ class _IntensityPanel extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: dark ? AppColors.darkStroke : AppColors.stroke,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,12 +278,15 @@ class _SettingsTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(8),
       child: Ink(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: dark ? AppColors.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: dark ? AppColors.darkStroke : AppColors.stroke,
+          ),
         ),
         child: Row(
           children: [
