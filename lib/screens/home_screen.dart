@@ -355,7 +355,7 @@ class _WeekStrip extends StatelessWidget {
     const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
     return SizedBox(
-      height: 78,
+      height: 84,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: days.length,
@@ -414,35 +414,46 @@ class _DayChip extends StatelessWidget {
       DailyStatus.pending => null,
     };
 
-    return Container(
+    return SizedBox(
       width: 72,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            day,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
+      height: 74,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    day,
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Text(
-            label,
-            style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
-          ),
-          SizedBox(
-            height: 16,
-            child: statusIcon == null
-                ? null
-                : Icon(statusIcon, color: textColor, size: 16),
-          ),
-        ],
+            if (statusIcon != null)
+              Positioned(
+                right: 8,
+                bottom: 7,
+                child: Icon(statusIcon, color: textColor, size: 14),
+              ),
+          ],
+        ),
       ),
     );
   }

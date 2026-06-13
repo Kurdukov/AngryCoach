@@ -10,5 +10,6 @@ coverage/
 .env
 .env.*
 *.log
+devtools_options.yaml
 android/.kotlin/
 android/app/debug-local.keystore
