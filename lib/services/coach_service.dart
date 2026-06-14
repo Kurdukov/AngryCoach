@@ -4,6 +4,7 @@ import '../data/coach_messages.dart';
 import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
 import '../models/stats.dart';
+import '../models/trust_stage.dart';
 
 class CoachService {
   CoachService._();
@@ -18,7 +19,11 @@ class CoachService {
     final pool = stats.currentStreak >= 6
         ? strongStreakMessages
         : successMessages;
-    return _shapeTone(_pick(pool), intensity, success: true);
+    return _shapeTone(
+      _trustTone(_pick(pool), stats, success: true),
+      intensity,
+      success: true,
+    );
   }
 
   String contextualSuccessMessage(
@@ -27,10 +32,18 @@ class CoachService {
     CoachIntensity intensity = CoachIntensity.toxic,
   }) {
     if (stats.currentStreak == 1 && previousStatus == null) {
-      return _shapeTone(_pick(firstSuccessMessages), intensity, success: true);
+      return _shapeTone(
+        _trustTone(_pick(firstSuccessMessages), stats, success: true),
+        intensity,
+        success: true,
+      );
     }
     if (previousStatus == DailyStatus.fail) {
-      return _shapeTone(_pick(comebackMessages), intensity, success: true);
+      return _shapeTone(
+        _trustTone(_pick(comebackMessages), stats, success: true),
+        intensity,
+        success: true,
+      );
     }
     return successMessage(stats, intensity: intensity);
   }
@@ -40,7 +53,11 @@ class CoachService {
     CoachIntensity intensity = CoachIntensity.toxic,
   }) {
     final message = _failMessage(stats);
-    return _shapeTone(message, intensity, success: false);
+    return _shapeTone(
+      _trustTone(message, stats, success: false),
+      intensity,
+      success: false,
+    );
   }
 
   String _failMessage(Stats stats) {
@@ -63,16 +80,7 @@ class CoachService {
   }
 
   String trustLabel(int trustLevel) {
-    if (trustLevel >= 80) {
-      return 'Подозрительно хорошо';
-    }
-    if (trustLevel >= 50) {
-      return 'Пока терпимо';
-    }
-    if (trustLevel >= 20) {
-      return 'На тонком льду';
-    }
-    return 'Моральное разрушение';
+    return TrustStage.fromLevel(trustLevel).label;
   }
 
   Stats applySuccess(Stats stats) {
@@ -94,6 +102,11 @@ class CoachService {
 
   String _pick(List<String> messages) {
     return messages[_random.nextInt(messages.length)];
+  }
+
+  String _trustTone(String message, Stats stats, {required bool success}) {
+    final stage = TrustStage.fromLevel(stats.trustLevel);
+    return success ? stage.successTone(message) : stage.failTone(message);
   }
 
   String _shapeTone(

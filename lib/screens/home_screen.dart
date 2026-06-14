@@ -6,12 +6,14 @@ import '../models/daily_result.dart';
 import '../models/failure_reason.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
+import '../models/trust_stage.dart';
 import '../services/coach_service.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
+import '../widgets/month_heatmap.dart';
 import 'focus_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
@@ -260,6 +262,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   trustLevel: _stats.trustLevel,
                   missedDays: _stats.missedDays,
                 ),
+                const SizedBox(height: 14),
+                _TrustStagePanel(trustLevel: _stats.trustLevel),
+                const SizedBox(height: 14),
+                MonthHeatmap(results: _dailyHistory),
               ],
             ),
             Positioned(
@@ -313,6 +319,109 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     return null;
+  }
+}
+
+class _TrustStagePanel extends StatelessWidget {
+  const _TrustStagePanel({required this.trustLevel});
+
+  final int trustLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    final stage = TrustStage.fromLevel(trustLevel);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
+    final tileColor = dark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.86);
+    final border = dark
+        ? AppColors.darkStroke
+        : Colors.white.withValues(alpha: 0.92);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: tileColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: _stageColor(stage).withValues(alpha: dark ? 0.18 : 0.28),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(_stageIcon(stage), color: textColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  stage.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  stage.summary,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: muted,
+                    fontWeight: FontWeight.w800,
+                    height: 1.12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '$trustLevel%',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _stageIcon(TrustStage stage) {
+    return switch (stage) {
+      TrustStage.noTrust => Icons.visibility_off_rounded,
+      TrustStage.trial => Icons.gpp_maybe_rounded,
+      TrustStage.almostHuman => Icons.psychology_rounded,
+      TrustStage.suspiciouslyDisciplined => Icons.diamond_rounded,
+    };
+  }
+
+  Color _stageColor(TrustStage stage) {
+    return switch (stage) {
+      TrustStage.noTrust => AppColors.pink,
+      TrustStage.trial => AppColors.yellow,
+      TrustStage.almostHuman => AppColors.blue,
+      TrustStage.suspiciouslyDisciplined => AppColors.green,
+    };
   }
 }
 

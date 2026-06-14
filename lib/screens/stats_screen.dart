@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../models/daily_result.dart';
 import '../models/stats.dart';
+import '../models/trust_stage.dart';
 import '../services/coach_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/month_heatmap.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -52,7 +54,6 @@ class _StatsScreenState extends State<StatsScreen> {
     final failDays = _dailyHistory
         .where((result) => result.status == DailyStatus.fail)
         .length;
-    final lastSeven = _lastDays(7);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Статистика')),
@@ -126,6 +127,16 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                   const SizedBox(height: 18),
                   Text(
+                    'Календарь месяца',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: ink,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  MonthHeatmap(results: _dailyHistory),
+                  const SizedBox(height: 18),
+                  Text(
                     'Последние 7 дней',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: ink,
@@ -133,7 +144,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _SevenDayStrip(results: lastSeven),
+                  _SevenDayStrip(results: _lastDays(7)),
                 ],
               ),
       ),
@@ -219,6 +230,7 @@ class _TrustPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stage = TrustStage.fromLevel(trustLevel);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -268,7 +280,7 @@ class _TrustPanel extends StatelessWidget {
           Text(
             completedDays == 0
                 ? 'Пока нет закрытых дней. Нажми отчёт, и тренер начнёт считать.'
-                : 'Выполнение: $successRate%. Тренер делает вид, что не впечатлён.',
+                : 'Уровень: ${stage.label}. Выполнение: $successRate%.',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -295,7 +307,7 @@ class _TrustPanel extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    verdict,
+                    '${stage.summary} $verdict',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
