@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/coach_intensity.dart';
+import '../models/coach_reaction.dart';
 import '../models/daily_result.dart';
 import '../models/failure_reason.dart';
 import '../models/habit.dart';
@@ -152,6 +153,7 @@ class _FocusScreenState extends State<FocusScreen> {
                       habitName: widget.habit.name,
                       message: _coachText(status),
                       intensity: widget.intensity,
+                      reaction: _coachReaction(status),
                       compact: compact,
                     ),
                     const SizedBox(height: 14),
@@ -268,6 +270,17 @@ class _FocusScreenState extends State<FocusScreen> {
       DailyStatus.fail => 'Сегодня провалено. Завтра будет новый раунд.',
       DailyStatus.pending =>
         'Докладывай честно. Тренер всё равно почувствует слабину.',
+    };
+  }
+
+  CoachReaction _coachReaction(DailyStatus status) {
+    return switch (status) {
+      DailyStatus.success =>
+        _displayStats.currentStreak >= 3
+            ? CoachReaction.streak
+            : CoachReaction.success,
+      DailyStatus.fail => CoachReaction.fail,
+      DailyStatus.pending => CoachReaction.idle,
     };
   }
 
@@ -558,10 +571,7 @@ class _TomorrowPlanPanel extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
-                      Icons.alarm_rounded,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.alarm_rounded, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -723,12 +733,14 @@ class _CoachPanel extends StatelessWidget {
     required this.habitName,
     required this.message,
     required this.intensity,
+    required this.reaction,
     required this.compact,
   });
 
   final String habitName;
   final String message;
   final CoachIntensity intensity;
+  final CoachReaction reaction;
   final bool compact;
 
   @override
@@ -743,7 +755,11 @@ class _CoachPanel extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AngryAvatar(size: compact ? 86 : 104, intensity: intensity),
+          AngryAvatar(
+            size: compact ? 86 : 104,
+            intensity: intensity,
+            reaction: reaction,
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(

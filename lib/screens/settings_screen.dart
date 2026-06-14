@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/coach_intensity.dart';
+import '../models/coach_reaction.dart';
 import '../models/habit.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
@@ -93,8 +94,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Сбросить прогресс?'),
-          content: const Text(
-            'Серия, провалы, доверие и история исчезнут. Тренер запомнит только твой позорный страх перед кнопкой.',
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AngryAvatar(
+                size: 96,
+                intensity: _intensity,
+                reaction: CoachReaction.reset,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Серия, провалы, доверие и история исчезнут. Тренер запомнит только твой позорный страх перед кнопкой.',
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -139,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final controller = ThemeScope.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Настройки')),
+      appBar: AppBar(title: const Text('Тренерская')),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(24, 8, 24, 16),
         child: FilledButton.icon(
@@ -151,7 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.save_rounded),
-          label: Text(_saving ? 'Сохраняю...' : 'Сохранить привычку'),
+          label: Text(_saving ? 'Сохраняю...' : 'Сохранить план'),
         ),
       ),
       body: SafeArea(
@@ -159,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
           children: [
             Text(
-              'Привычка',
+              'Тренерская',
               style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                 color: ink,
                 fontWeight: FontWeight.w900,
@@ -168,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Настрой цель, время пинка и жёсткость тренера.',
+              'Привычка, время пинка, тон и большая красная кнопка.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: dark ? Colors.white70 : AppColors.muted,
                 fontWeight: FontWeight.w700,
@@ -182,7 +194,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 18),
             _SettingsSection(
-              title: 'Что тренируем',
+              title: 'Привычка',
               child: TextField(
                 controller: _habitController,
                 onChanged: (_) => setState(() {}),
@@ -197,7 +209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 14),
             _SettingsSection(
-              title: 'Режим',
+              title: 'Расписание',
               child: Column(
                 children: [
                   _SettingsTile(
@@ -226,14 +238,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 14),
             _SettingsSection(
-              title: 'Тренер',
+              title: 'Тон тренера',
               child: _IntensityPanel(
                 value: _intensity,
                 onChanged: (value) => setState(() => _intensity = value),
               ),
             ),
             const SizedBox(height: 14),
-            _DangerZone(onReset: _resetProgress),
+            _DangerZone(intensity: _intensity, onReset: _resetProgress),
           ],
         ),
       ),
@@ -279,7 +291,11 @@ class _HabitPreview extends StatelessWidget {
       ),
       child: Row(
         children: [
-          AngryAvatar(size: 74, intensity: intensity),
+          AngryAvatar(
+            size: 74,
+            intensity: intensity,
+            reaction: CoachReaction.idle,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -485,8 +501,9 @@ class _IntensityPanel extends StatelessWidget {
 }
 
 class _DangerZone extends StatelessWidget {
-  const _DangerZone({required this.onReset});
+  const _DangerZone({required this.intensity, required this.onReset});
 
+  final CoachIntensity intensity;
   final VoidCallback onReset;
 
   @override
@@ -503,8 +520,12 @@ class _DangerZone extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.restart_alt_rounded, color: AppColors.pink),
-          const SizedBox(width: 14),
+          AngryAvatar(
+            size: 58,
+            intensity: intensity,
+            reaction: CoachReaction.reset,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

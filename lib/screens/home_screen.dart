@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/coach_message.dart';
 import '../models/coach_intensity.dart';
+import '../models/coach_reaction.dart';
 import '../models/daily_result.dart';
 import '../models/failure_reason.dart';
 import '../models/habit.dart';
@@ -252,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   habit: habit,
                   dailyResult: _dailyResult,
                   intensity: _intensity,
+                  reaction: _coachReaction(),
                   message: _todayStatusText(),
                   onStart: () => _openFocus(habit),
                   onFail: () => _openFocus(habit),
@@ -319,6 +321,17 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     return null;
+  }
+
+  CoachReaction _coachReaction() {
+    return switch (_dailyResult.status) {
+      DailyStatus.success =>
+        _stats.currentStreak >= 3
+            ? CoachReaction.streak
+            : CoachReaction.success,
+      DailyStatus.fail => CoachReaction.fail,
+      DailyStatus.pending => CoachReaction.idle,
+    };
   }
 }
 
@@ -566,6 +579,7 @@ class _TodayPanel extends StatelessWidget {
     required this.habit,
     required this.dailyResult,
     required this.intensity,
+    required this.reaction,
     required this.message,
     required this.onStart,
     required this.onFail,
@@ -574,6 +588,7 @@ class _TodayPanel extends StatelessWidget {
   final Habit habit;
   final DailyResult dailyResult;
   final CoachIntensity intensity;
+  final CoachReaction reaction;
   final String message;
   final VoidCallback onStart;
   final VoidCallback onFail;
@@ -633,7 +648,11 @@ class _TodayPanel extends StatelessWidget {
             right: -34,
             top: 34,
             child: IgnorePointer(
-              child: AngryAvatar(size: 220, intensity: intensity),
+              child: AngryAvatar(
+                size: 220,
+                intensity: intensity,
+                reaction: reaction,
+              ),
             ),
           ),
           Padding(
