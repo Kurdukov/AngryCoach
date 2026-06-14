@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/coach_intensity.dart';
 import '../models/coach_reaction.dart';
-import '../theme/app_colors.dart';
 
 class AngryAvatar extends StatelessWidget {
   const AngryAvatar({
@@ -56,12 +55,14 @@ class AngryAvatar extends StatelessWidget {
             ),
           ),
           Positioned(
+            left: size * 0.04,
             right: size * 0.04,
-            top: size * 0.06,
+            bottom: size * 0.02,
             child: _ReactionBadge(
               icon: _reactionIcon,
+              label: _reactionLabel,
               color: _reactionColor,
-              size: size * 0.26,
+              avatarSize: size,
             ),
           ),
         ],
@@ -79,21 +80,31 @@ class AngryAvatar extends StatelessWidget {
 
   Color get _reactionColor {
     return switch (reaction) {
-      CoachReaction.idle => AppColors.primary,
-      CoachReaction.success => AppColors.green,
-      CoachReaction.fail => AppColors.pink,
-      CoachReaction.streak => AppColors.primarySoft,
-      CoachReaction.reset => AppColors.yellow,
+      CoachReaction.idle => const Color(0xFF0B1220),
+      CoachReaction.success => const Color(0xFF0B6B3A),
+      CoachReaction.fail => const Color(0xFF8A1235),
+      CoachReaction.streak => const Color(0xFF0057D9),
+      CoachReaction.reset => const Color(0xFF7A4D00),
     };
   }
 
   IconData get _reactionIcon {
     return switch (reaction) {
       CoachReaction.idle => Icons.visibility_rounded,
-      CoachReaction.success => Icons.check_rounded,
-      CoachReaction.fail => Icons.close_rounded,
-      CoachReaction.streak => Icons.local_fire_department_rounded,
+      CoachReaction.success => Icons.emoji_events_rounded,
+      CoachReaction.fail => Icons.warning_amber_rounded,
+      CoachReaction.streak => Icons.bolt_rounded,
       CoachReaction.reset => Icons.restart_alt_rounded,
+    };
+  }
+
+  String get _reactionLabel {
+    return switch (reaction) {
+      CoachReaction.idle => 'ЖДУ ОТЧЁТ',
+      CoachReaction.success => 'ЗАЧЁТ',
+      CoachReaction.fail => 'ПРОВАЛ',
+      CoachReaction.streak => 'СЕРИЯ',
+      CoachReaction.reset => 'СБРОС',
     };
   }
 
@@ -121,34 +132,61 @@ class AngryAvatar extends StatelessWidget {
 class _ReactionBadge extends StatelessWidget {
   const _ReactionBadge({
     required this.icon,
+    required this.label,
     required this.color,
-    required this.size,
+    required this.avatarSize,
   });
 
   final IconData icon;
+  final String label;
   final Color color;
-  final double size;
+  final double avatarSize;
 
   @override
   Widget build(BuildContext context) {
-    final badgeSize = size.clamp(24.0, 42.0).toDouble();
-    final iconSize = size.clamp(14.0, 22.0).toDouble();
+    final compact = avatarSize < 82;
+    final height = compact ? 26.0 : 34.0;
+    final iconSize = compact ? 14.0 : 17.0;
+    final fontSize = compact ? 9.0 : 11.0;
 
     return Container(
-      width: badgeSize,
-      height: badgeSize,
+      height: height,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: color,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.66)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: color.withValues(alpha: 0.34),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Icon(icon, color: color, size: iconSize),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: iconSize),
+          if (!compact) ...[
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
