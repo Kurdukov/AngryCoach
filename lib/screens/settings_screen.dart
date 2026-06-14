@@ -6,6 +6,7 @@ import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
+import '../widgets/angry_avatar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.habit});
@@ -278,19 +279,7 @@ class _HabitPreview extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.sports_martial_arts_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
+          AngryAvatar(size: 74, intensity: intensity),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

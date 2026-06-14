@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
@@ -13,6 +14,7 @@ class FocusScreen extends StatefulWidget {
     required this.habit,
     required this.stats,
     required this.dailyResult,
+    required this.intensity,
     required this.onComplete,
     required this.onFail,
   });
@@ -20,6 +22,7 @@ class FocusScreen extends StatefulWidget {
   final Habit habit;
   final Stats stats;
   final DailyResult dailyResult;
+  final CoachIntensity intensity;
   final Future<void> Function() onComplete;
   final Future<void> Function() onFail;
 
@@ -104,6 +107,7 @@ class _FocusScreenState extends State<FocusScreen> {
                     _CoachPanel(
                       habitName: widget.habit.name,
                       message: _coachText(status),
+                      intensity: widget.intensity,
                       compact: compact,
                     ),
                     const SizedBox(height: 14),
@@ -297,11 +301,13 @@ class _CoachPanel extends StatelessWidget {
   const _CoachPanel({
     required this.habitName,
     required this.message,
+    required this.intensity,
     required this.compact,
   });
 
   final String habitName;
   final String message;
+  final CoachIntensity intensity;
   final bool compact;
 
   @override
@@ -316,7 +322,7 @@ class _CoachPanel extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AngryAvatar(size: compact ? 86 : 104),
+          AngryAvatar(size: compact ? 86 : 104, intensity: intensity),
           const SizedBox(width: 16),
           Expanded(
             child: Column(

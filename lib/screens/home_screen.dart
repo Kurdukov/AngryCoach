@@ -126,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
           habit: habit,
           stats: _stats,
           dailyResult: _dailyResult,
+          intensity: _intensity,
           onComplete: _complete,
           onFail: _fail,
         ),
@@ -205,6 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _TodayPanel(
                   habit: habit,
                   dailyResult: _dailyResult,
+                  intensity: _intensity,
                   message: _todayStatusText(),
                   onStart: () => _openFocus(habit),
                   onFail: _dailyResult.isDoneToday ? _showAlreadyDone : _fail,
@@ -411,6 +413,7 @@ class _TodayPanel extends StatelessWidget {
   const _TodayPanel({
     required this.habit,
     required this.dailyResult,
+    required this.intensity,
     required this.message,
     required this.onStart,
     required this.onFail,
@@ -418,6 +421,7 @@ class _TodayPanel extends StatelessWidget {
 
   final Habit habit;
   final DailyResult dailyResult;
+  final CoachIntensity intensity;
   final String message;
   final VoidCallback onStart;
   final VoidCallback onFail;
@@ -476,10 +480,12 @@ class _TodayPanel extends StatelessWidget {
           Positioned(
             right: -34,
             top: 34,
-            child: IgnorePointer(child: AngryAvatar(size: 220)),
+            child: IgnorePointer(
+              child: AngryAvatar(size: 220, intensity: intensity),
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 98),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -531,56 +537,18 @@ class _TodayPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 74),
-                if (isPending)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: onStart,
-                          icon: const Icon(Icons.fitness_center_rounded),
-                          label: const Text('Отчитаться'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 58,
-                        height: 58,
-                        child: IconButton.filled(
-                          onPressed: onFail,
-                          icon: const Icon(Icons.close_rounded),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.18,
-                            ),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  FilledButton.icon(
-                    onPressed: onStart,
-                    icon: Icon(
-                      isSuccess
-                          ? Icons.visibility_rounded
-                          : Icons.replay_rounded,
-                    ),
-                    label: const Text('Открыть отчёт'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.ink,
-                    ),
-                  ),
               ],
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 20,
+            child: _TodayActions(
+              isPending: isPending,
+              isSuccess: isSuccess,
+              onStart: onStart,
+              onFail: onFail,
             ),
           ),
           Positioned(
@@ -603,6 +571,67 @@ class _TodayPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TodayActions extends StatelessWidget {
+  const _TodayActions({
+    required this.isPending,
+    required this.isSuccess,
+    required this.onStart,
+    required this.onFail,
+  });
+
+  final bool isPending;
+  final bool isSuccess;
+  final VoidCallback onStart;
+  final VoidCallback onFail;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isPending) {
+      return FilledButton.icon(
+        onPressed: onStart,
+        icon: Icon(isSuccess ? Icons.visibility_rounded : Icons.replay_rounded),
+        label: const Text('Открыть отчёт'),
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppColors.ink,
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: onStart,
+            icon: const Icon(Icons.fitness_center_rounded),
+            label: const Text('Отчитаться'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.ink,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 58,
+          height: 58,
+          child: IconButton.filled(
+            onPressed: onFail,
+            icon: const Icon(Icons.close_rounded),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.18),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

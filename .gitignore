@@ -14,3 +14,5 @@ devtools_options.yaml
 android/.kotlin/
 android/app/debug-local.keystore
 assets/images/*_chroma.png
+assets/images/coach_3d_sarcastic.png
+assets/images/coach_3d_ruthless.png
