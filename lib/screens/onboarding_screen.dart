@@ -260,10 +260,10 @@ class _HabitStep extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Одну. Не весь список фантазий на новую жизнь.',
               style: TextStyle(
-                color: AppColors.muted,
+                color: dark ? Colors.white70 : AppColors.muted,
                 fontWeight: FontWeight.w800,
               ),
             ),

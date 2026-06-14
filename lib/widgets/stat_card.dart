@@ -17,6 +17,7 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final muted = dark ? Colors.white70 : AppColors.muted;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -34,7 +35,7 @@ class StatCard extends StatelessWidget {
             Text(
               title,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.muted,
+                color: muted,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -48,7 +49,7 @@ class StatCard extends StatelessWidget {
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 6),
-              Text(subtitle!, style: const TextStyle(color: AppColors.muted)),
+              Text(subtitle!, style: TextStyle(color: muted)),
             ],
           ],
         ),

@@ -93,8 +93,8 @@ class AngryCoachApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
-        labelStyle: const TextStyle(color: AppColors.muted),
-        hintStyle: const TextStyle(color: AppColors.muted),
+        labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.muted),
+        hintStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.muted),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(

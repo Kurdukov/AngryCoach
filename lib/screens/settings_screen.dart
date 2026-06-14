@@ -169,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               'Настрой цель, время пинка и жёсткость тренера.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppColors.muted,
+                color: dark ? Colors.white70 : AppColors.muted,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -374,8 +374,8 @@ class _ReminderPreview extends StatelessWidget {
                   body,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.muted,
+                  style: TextStyle(
+                    color: dark ? Colors.white70 : AppColors.muted,
                     fontWeight: FontWeight.w700,
                     height: 1.2,
                   ),
@@ -484,8 +484,8 @@ class _IntensityPanel extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value.label,
-            style: const TextStyle(
-              color: AppColors.muted,
+            style: TextStyle(
+              color: dark ? Colors.white70 : AppColors.muted,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -528,10 +528,10 @@ class _DangerZone extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Серия, доверие и журнал начнутся заново.',
                   style: TextStyle(
-                    color: AppColors.muted,
+                    color: dark ? Colors.white70 : AppColors.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -561,6 +561,8 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
 
     return InkWell(
       onTap: onTap,
@@ -584,22 +586,20 @@ class _SettingsTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(color: muted, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     value,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded),
+            Icon(Icons.chevron_right_rounded, color: muted),
           ],
         ),
       ),

@@ -669,6 +669,8 @@ class _MiniMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = dark ? Colors.white : AppColors.ink;
+    final labelColor = dark ? Colors.white70 : AppColors.ink;
     final tileColor = dark
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.white.withValues(alpha: 0.82);
@@ -711,7 +713,7 @@ class _MiniMetric extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.ink,
+              color: textColor,
               fontWeight: FontWeight.w900,
               height: 1,
             ),
@@ -720,10 +722,7 @@ class _MiniMetric extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: labelColor, fontWeight: FontWeight.w800),
           ),
         ],
       ),
