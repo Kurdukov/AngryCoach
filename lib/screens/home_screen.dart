@@ -335,80 +335,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _ReactionCallout extends StatelessWidget {
-  const _ReactionCallout({required this.reaction});
-
-  final CoachReaction reaction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-        boxShadow: [
-          BoxShadow(
-            color: _color.withValues(alpha: 0.22),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(_icon, color: Colors.white, size: 18),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              _label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color get _color {
-    return switch (reaction) {
-      CoachReaction.idle => const Color(0xFF111827),
-      CoachReaction.success => const Color(0xFF0B6B3A),
-      CoachReaction.fail => const Color(0xFF8A1235),
-      CoachReaction.streak => const Color(0xFF0057D9),
-      CoachReaction.reset => const Color(0xFF7A4D00),
-    };
-  }
-
-  IconData get _icon {
-    return switch (reaction) {
-      CoachReaction.idle => Icons.visibility_rounded,
-      CoachReaction.success => Icons.emoji_events_rounded,
-      CoachReaction.fail => Icons.warning_amber_rounded,
-      CoachReaction.streak => Icons.bolt_rounded,
-      CoachReaction.reset => Icons.restart_alt_rounded,
-    };
-  }
-
-  String get _label {
-    return switch (reaction) {
-      CoachReaction.idle => 'Тренер ждёт доклад',
-      CoachReaction.success => 'Зачёт принят',
-      CoachReaction.fail => 'Провал под протокол',
-      CoachReaction.streak => 'Серия разогналась',
-      CoachReaction.reset => 'Прогресс под сброс',
-    };
-  }
-}
-
 class _TrustStagePanel extends StatelessWidget {
   const _TrustStagePanel({required this.trustLevel});
 
@@ -779,8 +705,6 @@ class _TodayPanel extends StatelessWidget {
                           height: 1.16,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _ReactionCallout(reaction: reaction),
                     ],
                   ),
                 ),
