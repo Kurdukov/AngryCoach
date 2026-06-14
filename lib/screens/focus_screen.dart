@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
+import '../models/failure_reason.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
 import '../services/coach_service.dart';
@@ -24,7 +25,7 @@ class FocusScreen extends StatefulWidget {
   final DailyResult dailyResult;
   final CoachIntensity intensity;
   final Future<void> Function() onComplete;
-  final Future<void> Function() onFail;
+  final Future<void> Function(FailureReason reason) onFail;
 
   @override
   State<FocusScreen> createState() => _FocusScreenState();
@@ -33,23 +34,29 @@ class FocusScreen extends StatefulWidget {
 class _FocusScreenState extends State<FocusScreen> {
   DailyStatus? _resolvedStatus;
   Stats? _resolvedStats;
+  FailureReason? _failureReason;
+  bool _choosingFailureReason = false;
   bool _submitting = false;
 
   DailyStatus get _status => _resolvedStatus ?? widget.dailyResult.status;
   Stats get _displayStats => _resolvedStats ?? widget.stats;
 
-  Future<void> _submit(DailyStatus status) async {
+  Future<void> _submit(
+    DailyStatus status, {
+    FailureReason? failureReason,
+  }) async {
     setState(() => _submitting = true);
     if (status == DailyStatus.success) {
       await widget.onComplete();
     } else {
-      await widget.onFail();
+      await widget.onFail(failureReason ?? FailureReason.other);
     }
     if (!mounted) {
       return;
     }
     setState(() {
       _resolvedStatus = status;
+      _failureReason = failureReason;
       _resolvedStats = status == DailyStatus.success
           ? CoachService.instance.applySuccess(widget.stats)
           : CoachService.instance.applyFailure(widget.stats);
@@ -119,7 +126,11 @@ class _FocusScreenState extends State<FocusScreen> {
                     ),
                     SizedBox(height: compact ? 18 : 26),
                     if (locked) ...[
-                      _ResultPanel(status: status),
+                      _ResultPanel(
+                        status: status,
+                        failureReason:
+                            _failureReason ?? widget.dailyResult.failureReason,
+                      ),
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
@@ -131,40 +142,60 @@ class _FocusScreenState extends State<FocusScreen> {
                         ),
                       ),
                     ] else ...[
-                      FilledButton.icon(
-                        onPressed: _submitting
-                            ? null
-                            : () => _submit(DailyStatus.success),
-                        icon: _submitting
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.check_circle_rounded),
-                        label: Text(_submitting ? 'Сохраняю...' : 'Выполнил'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.ink,
-                          foregroundColor: Colors.white,
+                      if (_choosingFailureReason) ...[
+                        _FailureReasonPanel(
+                          submitting: _submitting,
+                          onSelect: (reason) =>
+                              _submit(DailyStatus.fail, failureReason: reason),
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: _submitting
-                            ? null
-                            : () => _submit(DailyStatus.fail),
-                        icon: const Icon(Icons.cancel_rounded),
-                        label: const Text('Провалил'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.ink,
-                          side: const BorderSide(
-                            color: AppColors.ink,
-                            width: 1.4,
+                        const SizedBox(height: 10),
+                        TextButton.icon(
+                          onPressed: _submitting
+                              ? null
+                              : () => setState(
+                                  () => _choosingFailureReason = false,
+                                ),
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          label: const Text('Назад'),
+                        ),
+                      ] else ...[
+                        FilledButton.icon(
+                          onPressed: _submitting
+                              ? null
+                              : () => _submit(DailyStatus.success),
+                          icon: _submitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.check_circle_rounded),
+                          label: Text(_submitting ? 'Сохраняю...' : 'Выполнил'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.ink,
+                            foregroundColor: Colors.white,
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: _submitting
+                              ? null
+                              : () => setState(
+                                  () => _choosingFailureReason = true,
+                                ),
+                          icon: const Icon(Icons.cancel_rounded),
+                          label: const Text('Провалил'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.ink,
+                            side: const BorderSide(
+                              color: AppColors.ink,
+                              width: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -196,9 +227,10 @@ class _FocusScreenState extends State<FocusScreen> {
 }
 
 class _ResultPanel extends StatelessWidget {
-  const _ResultPanel({required this.status});
+  const _ResultPanel({required this.status, required this.failureReason});
 
   final DailyStatus status;
+  final FailureReason? failureReason;
 
   @override
   Widget build(BuildContext context) {
@@ -233,8 +265,8 @@ class _ResultPanel extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   success
-                      ? 'Серия и доверие обновлены. Завтра тренер снова спросит.'
-                      : 'Провал сохранён честно. Завтра будет шанс вернуть уважение.',
+                      ? 'Серия +1, доверие +5. Завтра тренер снова спросит.'
+                      : _failureSummary(),
                   style: TextStyle(
                     color: AppColors.ink.withValues(alpha: 0.72),
                     fontWeight: FontWeight.w800,
@@ -247,6 +279,82 @@ class _ResultPanel extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _failureSummary() {
+    final reason = failureReason;
+    if (reason == null) {
+      return 'Доверие -10, серия сброшена. Завтра будет шанс вернуть уважение.';
+    }
+    return 'Причина: ${reason.label}. Доверие -10, серия сброшена.';
+  }
+}
+
+class _FailureReasonPanel extends StatelessWidget {
+  const _FailureReasonPanel({required this.submitting, required this.onSelect});
+
+  final bool submitting;
+  final ValueChanged<FailureReason> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.46),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Почему провал?',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppColors.ink,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Выбери честно. Тренер всё равно не поверит, но запишет.',
+            style: TextStyle(
+              color: AppColors.ink.withValues(alpha: 0.72),
+              fontWeight: FontWeight.w800,
+              height: 1.16,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: FailureReason.values.map((reason) {
+              return ActionChip(
+                onPressed: submitting ? null : () => onSelect(reason),
+                avatar: Icon(_reasonIcon(reason), size: 18),
+                label: Text(reason.label),
+                labelStyle: const TextStyle(fontWeight: FontWeight.w900),
+                backgroundColor: Colors.white,
+                side: BorderSide(color: AppColors.ink.withValues(alpha: 0.18)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _reasonIcon(FailureReason reason) {
+    return switch (reason) {
+      FailureReason.lazy => Icons.weekend_rounded,
+      FailureReason.forgot => Icons.notifications_off_rounded,
+      FailureReason.noTime => Icons.schedule_rounded,
+      FailureReason.slipped => Icons.warning_rounded,
+      FailureReason.other => Icons.more_horiz_rounded,
+    };
   }
 }
 

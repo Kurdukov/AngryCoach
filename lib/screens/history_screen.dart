@@ -436,11 +436,44 @@ class _HistoryTile extends StatelessWidget {
                         height: 1.18,
                       ),
                     ),
+                    if (result.failureReason != null) ...[
+                      const SizedBox(height: 12),
+                      _FailureReasonBadge(label: result.failureReason!.label),
+                    ],
                   ],
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FailureReasonBadge extends StatelessWidget {
+  const _FailureReasonBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = dark ? Colors.white : AppColors.ink;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: textColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textColor.withValues(alpha: 0.12)),
+      ),
+      child: Text(
+        'Причина: $label',
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );

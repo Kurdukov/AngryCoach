@@ -1,7 +1,13 @@
 import 'dart:convert';
 
+import 'failure_reason.dart';
+
 class DailyResult {
-  const DailyResult({required this.dateKey, required this.status});
+  const DailyResult({
+    required this.dateKey,
+    required this.status,
+    this.failureReason,
+  });
 
   factory DailyResult.none() {
     return const DailyResult(dateKey: '', status: DailyStatus.pending);
@@ -9,6 +15,7 @@ class DailyResult {
 
   final String dateKey;
   final DailyStatus status;
+  final FailureReason? failureReason;
 
   bool get isDoneToday {
     return dateKey == todayKey && status != DailyStatus.pending;
@@ -22,16 +29,25 @@ class DailyResult {
   }
 
   Map<String, dynamic> toMap() {
-    return {'dateKey': dateKey, 'status': status.name};
+    return {
+      'dateKey': dateKey,
+      'status': status.name,
+      if (failureReason != null) 'failureReason': failureReason!.name,
+    };
   }
 
   factory DailyResult.fromMap(Map<String, dynamic> map) {
     final statusName = map['status'] as String? ?? '';
+    final reasonName = map['failureReason'] as String?;
     return DailyResult(
       dateKey: map['dateKey'] as String? ?? '',
       status: DailyStatus.values.firstWhere(
         (value) => value.name == statusName,
         orElse: () => DailyStatus.pending,
+      ),
+      failureReason: FailureReason.values.cast<FailureReason?>().firstWhere(
+        (value) => value?.name == reasonName,
+        orElse: () => null,
       ),
     );
   }

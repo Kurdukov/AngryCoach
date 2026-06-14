@@ -4,6 +4,7 @@ import '../data/coach_messages.dart';
 import '../models/coach_message.dart';
 import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
+import '../models/failure_reason.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
 
@@ -22,6 +23,7 @@ class StorageService {
   static const _lastCoachMessageKey = 'lastCoachMessage';
   static const _dailyResultDateKey = 'dailyResultDate';
   static const _dailyResultStatusKey = 'dailyResultStatus';
+  static const _dailyResultFailureReasonKey = 'dailyResultFailureReason';
   static const _dailyHistoryKey = 'dailyHistory';
   static const _coachIntensityKey = 'coachIntensity';
 
@@ -123,6 +125,7 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     final dateKey = prefs.getString(_dailyResultDateKey) ?? '';
     final statusName = prefs.getString(_dailyResultStatusKey) ?? '';
+    final reasonName = prefs.getString(_dailyResultFailureReasonKey);
     final status = DailyStatus.values.firstWhere(
       (value) => value.name == statusName,
       orElse: () => DailyStatus.pending,
@@ -130,15 +133,31 @@ class StorageService {
     if (dateKey != DailyResult.todayKey) {
       return DailyResult.none();
     }
-    return DailyResult(dateKey: dateKey, status: status);
+    final reason = FailureReason.values.cast<FailureReason?>().firstWhere(
+      (value) => value?.name == reasonName,
+      orElse: () => null,
+    );
+    return DailyResult(dateKey: dateKey, status: status, failureReason: reason);
   }
 
-  Future<void> saveDailyResult(DailyStatus status) async {
+  Future<void> saveDailyResult(
+    DailyStatus status, {
+    FailureReason? failureReason,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_dailyResultDateKey, DailyResult.todayKey);
     await prefs.setString(_dailyResultStatusKey, status.name);
+    if (failureReason == null) {
+      await prefs.remove(_dailyResultFailureReasonKey);
+    } else {
+      await prefs.setString(_dailyResultFailureReasonKey, failureReason.name);
+    }
     await _upsertDailyHistory(
-      DailyResult(dateKey: DailyResult.todayKey, status: status),
+      DailyResult(
+        dateKey: DailyResult.todayKey,
+        status: status,
+        failureReason: failureReason,
+      ),
     );
   }
 
@@ -146,6 +165,7 @@ class StorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_dailyResultDateKey);
     await prefs.remove(_dailyResultStatusKey);
+    await prefs.remove(_dailyResultFailureReasonKey);
   }
 
   Future<List<DailyResult>> loadDailyHistory() async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/coach_message.dart';
 import '../models/coach_intensity.dart';
 import '../models/daily_result.dart';
+import '../models/failure_reason.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
 import '../services/coach_service.dart';
@@ -73,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _saveAction(nextStats, message, 'success');
   }
 
-  Future<void> _fail() async {
+  Future<void> _fail(FailureReason reason) async {
     if (_dailyResult.isDoneToday) {
       _showAlreadyDone();
       return;
@@ -83,13 +84,26 @@ class _HomeScreenState extends State<HomeScreen> {
       intensity: _intensity,
     );
     final nextStats = CoachService.instance.applyFailure(_stats);
-    await _saveAction(nextStats, message, 'fail');
+    await _saveAction(
+      nextStats,
+      '$message ${reason.coachLine}',
+      'fail',
+      reason,
+    );
   }
 
-  Future<void> _saveAction(Stats stats, String message, String type) async {
+  Future<void> _saveAction(
+    Stats stats,
+    String message,
+    String type, [
+    FailureReason? failureReason,
+  ]) async {
     final status = type == 'success' ? DailyStatus.success : DailyStatus.fail;
     await StorageService.instance.saveStats(stats);
-    await StorageService.instance.saveDailyResult(status);
+    await StorageService.instance.saveDailyResult(
+      status,
+      failureReason: failureReason,
+    );
     await StorageService.instance.saveLastCoachMessage(message);
     await StorageService.instance.addHistoryMessage(
       CoachMessage(text: message, date: DateTime.now(), type: type),
@@ -102,9 +116,17 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _stats = stats;
       _message = message;
-      _dailyResult = DailyResult(dateKey: DailyResult.todayKey, status: status);
+      _dailyResult = DailyResult(
+        dateKey: DailyResult.todayKey,
+        status: status,
+        failureReason: failureReason,
+      );
       _dailyHistory = [
-        DailyResult(dateKey: DailyResult.todayKey, status: status),
+        DailyResult(
+          dateKey: DailyResult.todayKey,
+          status: status,
+          failureReason: failureReason,
+        ),
         ..._dailyHistory.where(
           (result) => result.dateKey != DailyResult.todayKey,
         ),
@@ -209,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   intensity: _intensity,
                   message: _todayStatusText(),
                   onStart: () => _openFocus(habit),
-                  onFail: _dailyResult.isDoneToday ? _showAlreadyDone : _fail,
+                  onFail: () => _openFocus(habit),
                 ),
                 const SizedBox(height: 14),
                 _MetricStrip(
