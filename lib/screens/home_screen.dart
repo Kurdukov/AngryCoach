@@ -428,19 +428,19 @@ class _TodayPanel extends StatelessWidget {
     final isSuccess = dailyResult.status == DailyStatus.success;
     final gradient = switch (dailyResult.status) {
       DailyStatus.success => const [
-        Color(0xFF07140F),
-        Color(0xFF12422D),
-        Color(0xFFD6B86A),
+        Color(0xFF0B1220),
+        Color(0xFF123B5D),
+        Color(0xFFBFE5FF),
       ],
       DailyStatus.fail => const [
-        Color(0xFF17070D),
-        Color(0xFF6B1934),
-        Color(0xFFE86F91),
+        Color(0xFF120B14),
+        Color(0xFF452033),
+        Color(0xFFFFD6E2),
       ],
       DailyStatus.pending => const [
-        Color(0xFF070A12),
-        Color(0xFF182230),
-        Color(0xFF5E6A7D),
+        Color(0xFF0D1117),
+        Color(0xFF1C2430),
+        Color(0xFFEAF3FF),
       ],
     };
     final panelInk = Colors.white;
@@ -459,9 +459,14 @@ class _TodayPanel extends StatelessWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 28,
-            offset: const Offset(0, 18),
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 32,
+            offset: const Offset(0, 20),
+          ),
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.10),
+            blurRadius: 34,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -590,8 +595,8 @@ class _TodayPanel extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
               ),
               child: const Icon(
-                Icons.diamond_rounded,
-                color: AppColors.lime,
+                Icons.auto_awesome_rounded,
+                color: Colors.white,
                 size: 22,
               ),
             ),
@@ -663,18 +668,43 @@ class _MiniMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final tileColor = dark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.82);
+    final tileBorder = dark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.92);
+
     return Container(
       height: 92,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color,
+        color: tileColor,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.ink, width: 1.2),
+        border: Border.all(color: tileBorder, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.ink, size: 22),
+          Row(
+            children: [
+              Icon(icon, color: AppColors.primary, size: 22),
+              const Spacer(),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+            ],
+          ),
           const Spacer(),
           Text(
             value,

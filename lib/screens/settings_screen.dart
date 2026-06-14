@@ -253,11 +253,28 @@ class _HabitPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.lime,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: dark
+              ? const [Color(0xFF151922), Color(0xFF0C111A)]
+              : const [Colors.white, Color(0xFFEAF3FF)],
+        ),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: dark ? AppColors.darkStroke : Colors.white),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -265,12 +282,12 @@ class _HabitPreview extends StatelessWidget {
             width: 54,
             height: 54,
             decoration: BoxDecoration(
-              color: AppColors.ink,
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(
               Icons.sports_martial_arts_rounded,
-              color: AppColors.lime,
+              color: Colors.white,
               size: 28,
             ),
           ),
@@ -284,7 +301,7 @@ class _HabitPreview extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppColors.ink,
+                    color: ink,
                     fontWeight: FontWeight.w900,
                     height: 1.0,
                   ),
@@ -294,8 +311,8 @@ class _HabitPreview extends StatelessWidget {
                   '$time · ${intensity.label}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.ink,
+                  style: TextStyle(
+                    color: dark ? Colors.white70 : AppColors.muted,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
