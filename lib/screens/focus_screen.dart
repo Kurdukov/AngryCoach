@@ -130,6 +130,9 @@ class _FocusScreenState extends State<FocusScreen> {
                         status: status,
                         failureReason:
                             _failureReason ?? widget.dailyResult.failureReason,
+                        beforeStats: widget.stats,
+                        afterStats: _displayStats,
+                        freshResult: _resolvedStatus != null,
                       ),
                       const SizedBox(height: 12),
                       FilledButton.icon(
@@ -227,66 +230,221 @@ class _FocusScreenState extends State<FocusScreen> {
 }
 
 class _ResultPanel extends StatelessWidget {
-  const _ResultPanel({required this.status, required this.failureReason});
+  const _ResultPanel({
+    required this.status,
+    required this.failureReason,
+    required this.beforeStats,
+    required this.afterStats,
+    required this.freshResult,
+  });
 
   final DailyStatus status;
   final FailureReason? failureReason;
+  final Stats beforeStats;
+  final Stats afterStats;
+  final bool freshResult;
 
   @override
   Widget build(BuildContext context) {
     final success = status == DailyStatus.success;
+    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+      color: AppColors.ink,
+      fontWeight: FontWeight.w900,
+    );
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.ink.withValues(alpha: 0.12),
+        color: Colors.white.withValues(alpha: 0.48),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.ink.withValues(alpha: 0.16)),
+        border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            success ? Icons.trending_up_rounded : Icons.warning_rounded,
-            color: AppColors.ink,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                success ? Icons.trending_up_rounded : Icons.warning_rounded,
+                color: AppColors.ink,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Разбор дня', style: titleStyle),
+                    const SizedBox(height: 5),
+                    Text(
+                      _coachVerdict(),
+                      style: TextStyle(
+                        color: AppColors.ink.withValues(alpha: 0.72),
+                        fontWeight: FontWeight.w800,
+                        height: 1.16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  success ? 'День закрыт' : 'День записан',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _RecapMetric(
+                  label: 'Серия',
+                  value: freshResult
+                      ? _changeValue(
+                          beforeStats.currentStreak,
+                          afterStats.currentStreak,
+                        )
+                      : '${afterStats.currentStreak} дн.',
+                  detail: freshResult
+                      ? _deltaLabel(
+                          beforeStats.currentStreak,
+                          afterStats.currentStreak,
+                        )
+                      : 'сейчас',
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  success
-                      ? 'Серия +1, доверие +5. Завтра тренер снова спросит.'
-                      : _failureSummary(),
-                  style: TextStyle(
-                    color: AppColors.ink.withValues(alpha: 0.72),
-                    fontWeight: FontWeight.w800,
-                    height: 1.16,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _RecapMetric(
+                  label: 'Доверие',
+                  value: freshResult
+                      ? _changeValue(
+                          beforeStats.trustLevel,
+                          afterStats.trustLevel,
+                          suffix: '%',
+                        )
+                      : '${afterStats.trustLevel}%',
+                  detail: freshResult
+                      ? _deltaLabel(
+                          beforeStats.trustLevel,
+                          afterStats.trustLevel,
+                          suffix: '%',
+                        )
+                      : 'сейчас',
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _RecapMetric(
+                  label: 'Провалы',
+                  value: freshResult
+                      ? _changeValue(
+                          beforeStats.missedDays,
+                          afterStats.missedDays,
+                        )
+                      : '${afterStats.missedDays}',
+                  detail: freshResult
+                      ? _deltaLabel(
+                          beforeStats.missedDays,
+                          afterStats.missedDays,
+                        )
+                      : 'всего',
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  String _failureSummary() {
+  String _coachVerdict() {
+    if (status == DailyStatus.success) {
+      return 'Выполнено. Серия растёт, доверие тоже. Тренер недоволен только тем, что придраться почти не к чему.';
+    }
+
     final reason = failureReason;
     if (reason == null) {
-      return 'Доверие -10, серия сброшена. Завтра будет шанс вернуть уважение.';
+      return 'Провал принят. Доверие просело, серия сгорела. Завтра придётся возвращать уважение.';
     }
-    return 'Причина: ${reason.label}. Доверие -10, серия сброшена.';
+
+    return '${reason.coachLine} Доверие просело, серия сгорела. Завтра без театра.';
+  }
+
+  String _changeValue(int before, int after, {String suffix = ''}) {
+    if (before == after) {
+      return '$after$suffix';
+    }
+    return '$before$suffix → $after$suffix';
+  }
+
+  String _deltaLabel(int before, int after, {String suffix = ''}) {
+    final delta = after - before;
+    if (delta == 0) {
+      return 'без изменений';
+    }
+    final sign = delta > 0 ? '+' : '';
+    return '$sign$delta$suffix';
+  }
+}
+
+class _RecapMetric extends StatelessWidget {
+  const _RecapMetric({
+    required this.label,
+    required this.value,
+    required this.detail,
+  });
+
+  final String label;
+  final String value;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 82),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.ink.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ink.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.ink.withValues(alpha: 0.58),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(
+                color: AppColors.ink,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Text(
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.ink.withValues(alpha: 0.62),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
