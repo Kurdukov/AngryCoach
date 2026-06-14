@@ -7,6 +7,7 @@ import '../models/failure_reason.dart';
 import '../models/habit.dart';
 import '../models/stats.dart';
 import '../services/coach_service.dart';
+import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
@@ -151,10 +152,30 @@ class _HomeScreenState extends State<HomeScreen> {
           intensity: _intensity,
           onComplete: _complete,
           onFail: _fail,
+          onReminderTimeChanged: _updateReminderTime,
         ),
       ),
     );
     await _load();
+  }
+
+  Future<void> _updateReminderTime(String time) async {
+    final habit = _habit;
+    if (habit == null) {
+      return;
+    }
+
+    final nextHabit = Habit(name: habit.name, notificationTime: time);
+    await StorageService.instance.updateHabit(nextHabit);
+    await NotificationService.instance.scheduleDailyReminder(
+      nextHabit.notificationTime,
+      habitName: nextHabit.name,
+      intensity: _intensity,
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() => _habit = nextHabit);
   }
 
   Future<void> _openStats() async {

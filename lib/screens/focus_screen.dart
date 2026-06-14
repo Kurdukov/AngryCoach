@@ -18,6 +18,7 @@ class FocusScreen extends StatefulWidget {
     required this.intensity,
     required this.onComplete,
     required this.onFail,
+    required this.onReminderTimeChanged,
   });
 
   final Habit habit;
@@ -26,6 +27,7 @@ class FocusScreen extends StatefulWidget {
   final CoachIntensity intensity;
   final Future<void> Function() onComplete;
   final Future<void> Function(FailureReason reason) onFail;
+  final Future<void> Function(String time) onReminderTimeChanged;
 
   @override
   State<FocusScreen> createState() => _FocusScreenState();
@@ -35,11 +37,19 @@ class _FocusScreenState extends State<FocusScreen> {
   DailyStatus? _resolvedStatus;
   Stats? _resolvedStats;
   FailureReason? _failureReason;
+  late String _plannedReminderTime;
   bool _choosingFailureReason = false;
   bool _submitting = false;
+  bool _updatingReminder = false;
 
   DailyStatus get _status => _resolvedStatus ?? widget.dailyResult.status;
   Stats get _displayStats => _resolvedStats ?? widget.stats;
+
+  @override
+  void initState() {
+    super.initState();
+    _plannedReminderTime = widget.habit.notificationTime;
+  }
 
   Future<void> _submit(
     DailyStatus status, {
@@ -62,6 +72,33 @@ class _FocusScreenState extends State<FocusScreen> {
           : CoachService.instance.applyFailure(widget.stats);
       _submitting = false;
     });
+  }
+
+  Future<void> _pickTomorrowTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _parseTime(_plannedReminderTime),
+      helpText: 'Во сколько завтра добьём?',
+      cancelText: 'Отмена',
+      confirmText: 'Поставить',
+    );
+    if (picked == null) {
+      return;
+    }
+
+    final nextTime = _formatTime(picked);
+    setState(() => _updatingReminder = true);
+    await widget.onReminderTimeChanged(nextTime);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _plannedReminderTime = nextTime;
+      _updatingReminder = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Завтра тренер придёт в $nextTime. Готовься.')),
+    );
   }
 
   @override
@@ -119,7 +156,7 @@ class _FocusScreenState extends State<FocusScreen> {
                     ),
                     const SizedBox(height: 14),
                     _ContextGrid(
-                      reminderTime: widget.habit.notificationTime,
+                      reminderTime: _plannedReminderTime,
                       currentStreak: _displayStats.currentStreak,
                       trustLevel: _displayStats.trustLevel,
                       bestStreak: _displayStats.bestStreak,
@@ -133,6 +170,12 @@ class _FocusScreenState extends State<FocusScreen> {
                         beforeStats: widget.stats,
                         afterStats: _displayStats,
                         freshResult: _resolvedStatus != null,
+                      ),
+                      const SizedBox(height: 12),
+                      _TomorrowPlanPanel(
+                        reminderTime: _plannedReminderTime,
+                        updating: _updatingReminder,
+                        onPickTime: _pickTomorrowTime,
                       ),
                       const SizedBox(height: 12),
                       FilledButton.icon(
@@ -226,6 +269,20 @@ class _FocusScreenState extends State<FocusScreen> {
       DailyStatus.pending =>
         'Докладывай честно. Тренер всё равно почувствует слабину.',
     };
+  }
+
+  TimeOfDay _parseTime(String value) {
+    final parts = value.split(':');
+    return TimeOfDay(
+      hour: int.tryParse(parts.first) ?? 9,
+      minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
+    );
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }
 
@@ -444,6 +501,104 @@ class _RecapMetric extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TomorrowPlanPanel extends StatelessWidget {
+  const _TomorrowPlanPanel({
+    required this.reminderTime,
+    required this.updating,
+    required this.onPickTime,
+  });
+
+  final String reminderTime;
+  final bool updating;
+  final VoidCallback onPickTime;
+
+  @override
+  Widget build(BuildContext context) {
+    final timeButton = FilledButton.tonalIcon(
+      onPressed: updating ? null : onPickTime,
+      icon: updating
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.edit_calendar_rounded),
+      label: Text(reminderTime),
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.ink,
+        minimumSize: const Size(98, 46),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 330;
+
+        return Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppColors.ink,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.alarm_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'План завтра',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Во сколько завтра добьём?',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!narrow) ...[const SizedBox(width: 10), timeButton],
+                ],
+              ),
+              if (narrow) ...[
+                const SizedBox(height: 12),
+                SizedBox(width: double.infinity, child: timeButton),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
