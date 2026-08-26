@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 
 class StatCard extends StatelessWidget {
   const StatCard({
@@ -22,7 +23,7 @@ class StatCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : AppColors.card,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
           color: dark ? const Color(0xFF2A2B32) : const Color(0xFFE1E2EA),
         ),

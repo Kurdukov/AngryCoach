@@ -6,6 +6,7 @@ import '../models/habit.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
 
@@ -279,7 +280,7 @@ class _HabitPreview extends StatelessWidget {
               ? const [Color(0xFF151922), Color(0xFF0C111A)]
               : const [Colors.white, Color(0xFFEAF3FF)],
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: dark ? AppColors.darkStroke : Colors.white),
         boxShadow: [
           BoxShadow(
@@ -351,7 +352,7 @@ class _ReminderPreview extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
           color: dark ? AppColors.darkStroke : AppColors.stroke,
         ),
@@ -446,7 +447,7 @@ class _IntensityPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
           color: dark ? AppColors.darkStroke : AppColors.stroke,
         ),
@@ -515,7 +516,7 @@ class _DangerZone extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.pink),
       ),
       child: Row(
@@ -576,12 +577,12 @@ class _SettingsTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadii.md),
       child: Ink(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: dark ? AppColors.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           border: Border.all(
             color: dark ? AppColors.darkStroke : AppColors.stroke,
           ),

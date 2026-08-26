@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/daily_result.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 
 class MonthHeatmap extends StatelessWidget {
   const MonthHeatmap({super.key, required this.results});
@@ -23,7 +24,7 @@ class MonthHeatmap extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : Colors.white.withValues(alpha: 0.86),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
           color: dark
               ? AppColors.darkStroke
@@ -178,7 +179,7 @@ class _MonthDayCell extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
         border: Border.all(
           color: borderColor,
           width: today ? 2 : 1,

@@ -7,13 +7,11 @@ plugins {
 android {
     namespace = "com.kurdukov.angrycoach"
     compileSdk = flutter.compileSdkVersion
-    buildToolsVersion = "36.1.0"
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -26,17 +24,10 @@ android {
         versionName = flutter.versionName
     }
 
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file("debug-local.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
-
     buildTypes {
         release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -50,8 +41,4 @@ kotlin {
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

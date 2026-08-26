@@ -4,6 +4,7 @@ import '../models/habit.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
 import 'home_screen.dart';
@@ -458,7 +459,7 @@ class _StepIndicator extends StatelessWidget {
                   : (onColor
                         ? Colors.white.withValues(alpha: 0.22)
                         : AppColors.stroke),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
             ),
           ),
         );
@@ -477,7 +478,7 @@ class _HeroCoach extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: AppColors.ink, width: 2),
       ),
       child: Column(
@@ -513,7 +514,9 @@ class _Pill extends StatelessWidget {
       avatar: const Icon(Icons.add_rounded, size: 18),
       backgroundColor: AppColors.lime,
       side: const BorderSide(color: AppColors.ink),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
       labelStyle: const TextStyle(
         color: AppColors.ink,
         fontWeight: FontWeight.w900,
@@ -532,13 +535,13 @@ class _TimeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadii.lg),
       child: Ink(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.42),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.lg),
           border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
         ),
         child: Row(
@@ -575,7 +578,7 @@ class _CoachBubble extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
       ),
       child: Row(
@@ -610,12 +613,12 @@ class _TipTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadii.sm),
       child: Ink(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.38),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
           border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
         ),
         child: Row(

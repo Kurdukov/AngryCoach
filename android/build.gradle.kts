@@ -5,14 +5,6 @@ allprojects {
     }
 }
 
-subprojects {
-    plugins.withId("com.android.library") {
-        extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
-            buildToolsVersion = "36.1.0"
-        }
-    }
-}
-
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")

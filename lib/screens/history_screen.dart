@@ -4,6 +4,7 @@ import '../models/coach_message.dart';
 import '../models/daily_result.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 
 enum _HistoryFilter { all, success, fail }
 
@@ -161,7 +162,7 @@ class _LatestMessageCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.ink,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +219,7 @@ class _SummaryPanel extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,7 +293,7 @@ class _SummaryMetric extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +373,7 @@ class _HistoryTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: palette.background,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: palette.border),
       ),
       child: IntrinsicHeight(
@@ -384,7 +385,7 @@ class _HistoryTile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: palette.accent,
                 borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(8),
+                  left: Radius.circular(AppRadii.md),
                 ),
               ),
             ),
@@ -401,7 +402,7 @@ class _HistoryTile extends StatelessWidget {
                           height: 38,
                           decoration: BoxDecoration(
                             color: palette.badge,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(AppRadii.sm),
                           ),
                           child: Icon(
                             _statusIcon(result.status),
@@ -465,7 +466,7 @@ class _FailureReasonBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: textColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: textColor.withValues(alpha: 0.12)),
       ),
       child: Text(
@@ -492,7 +493,7 @@ class _StatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: isPositive ? AppColors.lime : AppColors.pink,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(color: AppColors.ink),
       ),
       child: Text(
@@ -560,7 +561,7 @@ class _EmptyState extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : AppColors.lime,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(
           color: dark ? const Color(0xFF2A2B32) : AppColors.ink,
         ),

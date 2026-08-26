@@ -12,6 +12,7 @@ import '../services/coach_service.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
 import '../widgets/month_heatmap.dart';
@@ -145,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> _openFocus(Habit habit) async {
+  Future<void> _openFocus(Habit habit, {bool failureIntent = false}) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => FocusScreen(
@@ -156,6 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onComplete: _complete,
           onFail: _fail,
           onReminderTimeChanged: _updateReminderTime,
+          startInFailureFlow: failureIntent,
         ),
       ),
     );
@@ -256,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   reaction: _coachReaction(),
                   message: _todayStatusText(),
                   onStart: () => _openFocus(habit),
-                  onFail: () => _openFocus(habit),
+                  onFail: () => _openFocus(habit, failureIntent: true),
                 ),
                 const SizedBox(height: 14),
                 _MetricStrip(
@@ -357,7 +359,7 @@ class _TrustStagePanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: tileColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
@@ -374,7 +376,7 @@ class _TrustStagePanel extends StatelessWidget {
             height: 50,
             decoration: BoxDecoration(
               color: _stageColor(stage).withValues(alpha: dark ? 0.18 : 0.28),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
             ),
             child: Icon(_stageIcon(stage), color: textColor),
           ),
@@ -535,7 +537,7 @@ class _DayChip extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.sm),
         ),
         child: Stack(
           children: [
@@ -626,7 +628,7 @@ class _TodayPanel extends StatelessWidget {
           colors: gradient,
           stops: const [0.0, 0.58, 1.0],
         ),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
         boxShadow: [
           BoxShadow(
@@ -730,7 +732,7 @@ class _TodayPanel extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadii.pill),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
               ),
               child: const Icon(
@@ -790,14 +792,17 @@ class _TodayActions extends StatelessWidget {
         SizedBox(
           width: 58,
           height: 58,
-          child: IconButton.filled(
-            onPressed: onFail,
-            icon: const Icon(Icons.close_rounded),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.18),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          child: Tooltip(
+            message: 'Отметить провал',
+            child: IconButton.filled(
+              onPressed: onFail,
+              icon: const Icon(Icons.close_rounded),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.18),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
               ),
             ),
           ),
@@ -833,7 +838,7 @@ class _MetricStrip extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _MiniMetric(
-            icon: Icons.visibility_rounded,
+            icon: Icons.shield_rounded,
             value: '$trustLevel%',
             label: 'доверие',
             color: AppColors.lime,
@@ -883,7 +888,7 @@ class _MiniMetric extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: tileColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: tileBorder, width: 1),
         boxShadow: [
           BoxShadow(
@@ -940,7 +945,9 @@ class _ThemeToggle extends StatelessWidget {
         controller.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
       ),
       style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
       ),
     );
   }
@@ -968,7 +975,7 @@ class _BottomDock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: dark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
         border: Border.all(
           color: dark ? AppColors.darkStroke : AppColors.stroke,
         ),
@@ -993,7 +1000,7 @@ class _BottomDock extends StatelessWidget {
               style: FilledButton.styleFrom(
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
               ),
               child: const Icon(Icons.add_rounded),
@@ -1018,7 +1025,9 @@ class _DockIcon extends StatelessWidget {
       onPressed: onTap,
       icon: Icon(icon),
       style: IconButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
       ),
     );
   }

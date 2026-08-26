@@ -8,6 +8,7 @@ import '../models/habit.dart';
 import '../models/stats.dart';
 import '../services/coach_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 import '../widgets/angry_avatar.dart';
 
 class FocusScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class FocusScreen extends StatefulWidget {
     required this.onComplete,
     required this.onFail,
     required this.onReminderTimeChanged,
+    this.startInFailureFlow = false,
   });
 
   final Habit habit;
@@ -29,6 +31,12 @@ class FocusScreen extends StatefulWidget {
   final Future<void> Function() onComplete;
   final Future<void> Function(FailureReason reason) onFail;
   final Future<void> Function(String time) onReminderTimeChanged;
+  // UX fix: the home screen has a quick "✕" action next to the main
+  // report button. It used to just open this screen exactly like the
+  // primary button, which was misleading — the icon implies "mark as
+  // failed" but nothing was recorded until the user tapped again. Now it
+  // opens straight into the failure-reason picker instead.
+  final bool startInFailureFlow;
 
   @override
   State<FocusScreen> createState() => _FocusScreenState();
@@ -50,6 +58,10 @@ class _FocusScreenState extends State<FocusScreen> {
   void initState() {
     super.initState();
     _plannedReminderTime = widget.habit.notificationTime;
+    if (widget.startInFailureFlow &&
+        widget.dailyResult.status == DailyStatus.pending) {
+      _choosingFailureReason = true;
+    }
   }
 
   Future<void> _submit(
@@ -326,7 +338,7 @@ class _ResultPanel extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.48),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
       ),
       child: Column(
@@ -472,7 +484,7 @@ class _RecapMetric extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppColors.ink.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
         border: Border.all(color: AppColors.ink.withValues(alpha: 0.08)),
       ),
       child: Column(
@@ -557,7 +569,7 @@ class _TomorrowPlanPanel extends StatelessWidget {
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: AppColors.ink,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.md),
             border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
           ),
           child: Column(
@@ -569,7 +581,7 @@ class _TomorrowPlanPanel extends StatelessWidget {
                     height: 46,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppRadii.sm),
                     ),
                     child: const Icon(Icons.alarm_rounded, color: Colors.white),
                   ),
@@ -625,7 +637,7 @@ class _FailureReasonPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.46),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
       ),
       child: Column(
@@ -660,7 +672,7 @@ class _FailureReasonPanel extends StatelessWidget {
                 backgroundColor: Colors.white,
                 side: BorderSide(color: AppColors.ink.withValues(alpha: 0.18)),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
                 ),
               );
             }).toList(),
@@ -692,7 +704,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: AppColors.ink,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -749,7 +761,7 @@ class _CoachPanel extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.46),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
       ),
       child: Row(
@@ -824,7 +836,7 @@ class _ContextGrid extends StatelessWidget {
           value: '$currentStreak дн.',
         ),
         _ContextTile(
-          icon: Icons.visibility_rounded,
+          icon: Icons.shield_rounded,
           label: 'Доверие',
           value: '$trustLevel%',
         ),
@@ -860,7 +872,7 @@ class _ContextTile extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.34),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
       ),
       child: Row(

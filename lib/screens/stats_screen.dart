@@ -6,6 +6,7 @@ import '../models/trust_stage.dart';
 import '../services/coach_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 import '../widgets/month_heatmap.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -235,7 +236,7 @@ class _TrustPanel extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,7 +269,7 @@ class _TrustPanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
             child: LinearProgressIndicator(
               minHeight: 12,
               value: trustLevel / 100,
@@ -293,7 +294,7 @@ class _TrustPanel extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.md),
               border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
             child: Row(
@@ -345,7 +346,7 @@ class _MetricCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,10 +398,28 @@ class _SevenDayStrip extends StatelessWidget {
 
   final List<DailyResult> results;
 
+  // Bug fix: labels used to be picked by position in the list
+  // (index 0 => "Пн", index 6 => "Вс"), which is only correct when the
+  // 7-day window happens to start on a Monday. Since `results` is "the
+  // last 7 calendar days", it can start on any weekday, so the label must
+  // be derived from the actual date instead.
+  String _weekdayLabel(String dateKey) {
+    const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final parts = dateKey.split('-');
+    if (parts.length != 3) {
+      return '';
+    }
+    final date = DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
+    return labels[date.weekday - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     return Row(
       children: results.asMap().entries.map((entry) {
         final index = entry.key;
@@ -422,7 +441,7 @@ class _SevenDayStrip extends StatelessWidget {
             margin: EdgeInsets.only(right: index == results.length - 1 ? 0 : 8),
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(AppRadii.sm),
               border: Border.all(
                 color: dark ? const Color(0xFF2A2B32) : AppColors.ink,
               ),
@@ -439,7 +458,7 @@ class _SevenDayStrip extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  labels[index],
+                  _weekdayLabel(result.dateKey),
                   style: TextStyle(
                     color: result.status == DailyStatus.pending && dark
                         ? Colors.white

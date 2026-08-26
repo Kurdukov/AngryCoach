@@ -5,6 +5,7 @@ import 'screens/onboarding_screen.dart';
 import 'services/notification_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_colors.dart';
+import 'theme/app_radii.dart';
 import 'theme/theme_controller.dart';
 
 Future<void> main() async {
@@ -67,7 +68,9 @@ class AngryCoachApp extends StatelessWidget {
       ),
       cardTheme: CardThemeData(
         color: card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
         elevation: 0,
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -78,19 +81,19 @@ class AngryCoachApp extends StatelessWidget {
           vertical: 18,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           borderSide: BorderSide(
             color: isDark ? AppColors.darkStroke : AppColors.stroke,
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           borderSide: BorderSide(
             color: isDark ? AppColors.darkStroke : AppColors.stroke,
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadii.md),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.muted),
@@ -102,7 +105,9 @@ class AngryCoachApp extends StatelessWidget {
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(58),
           textStyle: const TextStyle(fontWeight: FontWeight.w900),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -111,7 +116,9 @@ class AngryCoachApp extends StatelessWidget {
           side: BorderSide(color: ink),
           minimumSize: const Size.fromHeight(58),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
         ),
       ),
     );

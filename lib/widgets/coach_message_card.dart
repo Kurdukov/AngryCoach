@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_radii.dart';
 
 class CoachMessageCard extends StatelessWidget {
   const CoachMessageCard({super.key, required this.message});
@@ -13,7 +14,7 @@ class CoachMessageCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.ink,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadii.md),
         boxShadow: const [
           BoxShadow(
             color: Color(0x1A0D0E0D),
