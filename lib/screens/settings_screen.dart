@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/coach_intensity.dart';
 import '../models/coach_reaction.dart';
-import '../models/habit.dart';
-import '../services/notification_service.dart';
-import '../services/storage_service.dart';
+import '../state/habit_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.habit});
-
-  final Habit habit;
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -22,27 +19,21 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _habitController;
   late TimeOfDay _reminderTime;
-  CoachIntensity _intensity = CoachIntensity.toxic;
+  late CoachIntensity _intensity;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _habitController = TextEditingController(text: widget.habit.name);
-    final parts = widget.habit.notificationTime.split(':');
+    final controller = context.read<HabitController>();
+    final habit = controller.habit!;
+    _habitController = TextEditingController(text: habit.name);
+    final parts = habit.notificationTime.split(':');
     _reminderTime = TimeOfDay(
       hour: int.tryParse(parts.first) ?? 9,
       minute: parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
     );
-    _loadIntensity();
-  }
-
-  Future<void> _loadIntensity() async {
-    final intensity = await StorageService.instance.loadCoachIntensity();
-    if (!mounted) {
-      return;
-    }
-    setState(() => _intensity = intensity);
+    _intensity = controller.intensity;
   }
 
   @override
@@ -52,10 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _reminderTime,
-    );
+    final picked = await showTimePicker(context: context, initialTime: _reminderTime);
     if (picked != null) {
       setState(() => _reminderTime = picked);
     }
@@ -71,22 +59,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     setState(() => _saving = true);
-    final habit = Habit(
+    await context.read<HabitController>().updateHabitPlan(
       name: name,
-      notificationTime: _formatTime(_reminderTime),
-    );
-    await StorageService.instance.updateHabit(habit);
-    await StorageService.instance.saveCoachIntensity(_intensity);
-    await NotificationService.instance.scheduleDailyReminder(
-      habit.notificationTime,
-      habitName: habit.name,
+      time: _formatTime(_reminderTime),
       intensity: _intensity,
     );
 
     if (!mounted) {
       return;
     }
-    Navigator.of(context).pop(true);
+    Navigator.of(context).pop();
   }
 
   Future<void> _resetProgress() async {
@@ -98,11 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AngryAvatar(
-                size: 96,
-                intensity: _intensity,
-                reaction: CoachReaction.reset,
-              ),
+              AngryAvatar(size: 88, intensity: _intensity, reaction: CoachReaction.reset),
               const SizedBox(height: 12),
               const Text(
                 'Серия, провалы, доверие и история исчезнут. Тренер запомнит только твой позорный страх перед кнопкой.',
@@ -123,15 +101,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
 
-    if (confirmed != true) {
+    if (confirmed != true || !mounted) {
       return;
     }
 
-    await StorageService.instance.resetProgress();
+    await context.read<HabitController>().resetProgress();
     if (!mounted) {
       return;
     }
-    Navigator.of(context).pop(true);
+    Navigator.of(context).pop();
   }
 
   String _formatTime(TimeOfDay time) {
@@ -149,7 +127,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final ink = dark ? Colors.white : AppColors.ink;
-    final controller = ThemeScope.of(context);
+    final muted = dark ? Colors.white70 : AppColors.muted;
+    final theme = context.watch<ThemeController>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Тренерская')),
@@ -161,7 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
               : const Icon(Icons.save_rounded),
           label: Text(_saving ? 'Сохраняю...' : 'Сохранить план'),
@@ -169,84 +148,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 18),
           children: [
-            Text(
-              'Тренерская',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                color: ink,
-                fontWeight: FontWeight.w900,
-                height: 0.95,
+            _HabitPreview(name: _habitNamePreview, time: _formatTime(_reminderTime), intensity: _intensity),
+            const SizedBox(height: 22),
+            _SectionLabel('Привычка'),
+            TextField(
+              controller: _habitController,
+              onChanged: (_) => setState(() {}),
+              textCapitalization: TextCapitalization.sentences,
+              maxLength: 34,
+              decoration: const InputDecoration(
+                labelText: 'Название',
+                helperText: 'Коротко и конкретно, без романа в трёх томах.',
+                prefixIcon: Icon(Icons.fitness_center_rounded),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Привычка, время пинка, тон и большая красная кнопка.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: dark ? Colors.white70 : AppColors.muted,
-                fontWeight: FontWeight.w700,
-              ),
+            const SizedBox(height: 6),
+            _SectionLabel('Расписание'),
+            _SettingsRow(
+              icon: Icons.schedule_rounded,
+              title: 'Напоминание',
+              value: _formatTime(_reminderTime),
+              onTap: _pickTime,
+            ),
+            const Divider(height: 24),
+            _SettingsRow(
+              icon: theme.isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              title: 'Тема',
+              value: theme.isDark ? 'Тёмная' : 'Светлая',
+              onTap: theme.toggle,
             ),
             const SizedBox(height: 22),
-            _HabitPreview(
-              name: _habitNamePreview,
-              time: _formatTime(_reminderTime),
-              intensity: _intensity,
+            _SectionLabel('Тон тренера'),
+            SegmentedButton<CoachIntensity>(
+              segments: CoachIntensity.values
+                  .map((intensity) => ButtonSegment(value: intensity, label: Text(intensity.shortLabel)))
+                  .toList(),
+              selected: {_intensity},
+              onSelectionChanged: (selection) => setState(() => _intensity = selection.first),
+              showSelectedIcon: false,
             ),
-            const SizedBox(height: 18),
-            _SettingsSection(
-              title: 'Привычка',
-              child: TextField(
-                controller: _habitController,
-                onChanged: (_) => setState(() {}),
-                textCapitalization: TextCapitalization.sentences,
-                maxLength: 34,
-                decoration: const InputDecoration(
-                  labelText: 'Название',
-                  helperText: 'Коротко и конкретно, без романа в трёх томах.',
-                  prefixIcon: Icon(Icons.fitness_center_rounded),
+            const SizedBox(height: 8),
+            Text(_intensity.label, style: TextStyle(color: muted, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 28),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Сброс прогресса', style: TextStyle(color: ink, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Серия, доверие и журнал начнутся заново.',
+                        style: TextStyle(color: muted, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                TextButton(
+                  onPressed: _resetProgress,
+                  style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                  child: const Text('Сбросить'),
+                ),
+              ],
             ),
-            const SizedBox(height: 14),
-            _SettingsSection(
-              title: 'Расписание',
-              child: Column(
-                children: [
-                  _SettingsTile(
-                    icon: Icons.schedule_rounded,
-                    title: 'Напоминание',
-                    value: _formatTime(_reminderTime),
-                    onTap: _pickTime,
-                  ),
-                  const SizedBox(height: 10),
-                  _ReminderPreview(
-                    habitName: _habitNamePreview,
-                    time: _formatTime(_reminderTime),
-                    intensity: _intensity,
-                  ),
-                  const SizedBox(height: 10),
-                  _SettingsTile(
-                    icon: controller.isDark
-                        ? Icons.dark_mode_rounded
-                        : Icons.light_mode_rounded,
-                    title: 'Тема',
-                    value: controller.isDark ? 'Темная' : 'Светлая',
-                    onTap: controller.toggle,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            _SettingsSection(
-              title: 'Тон тренера',
-              child: _IntensityPanel(
-                value: _intensity,
-                onChanged: (value) => setState(() => _intensity = value),
-              ),
-            ),
-            const SizedBox(height: 14),
-            _DangerZone(intensity: _intensity, onReset: _resetProgress),
           ],
         ),
       ),
@@ -254,12 +223,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, top: 4),
+      child: Text(
+        text,
+        style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 15),
+      ),
+    );
+  }
+}
+
 class _HabitPreview extends StatelessWidget {
-  const _HabitPreview({
-    required this.name,
-    required this.time,
-    required this.intensity,
-  });
+  const _HabitPreview({required this.name, required this.time, required this.intensity});
 
   final String name;
   final String time;
@@ -269,34 +253,17 @@ class _HabitPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: dark
-              ? const [Color(0xFF151922), Color(0xFF0C111A)]
-              : const [Colors.white, Color(0xFFEAF3FF)],
-        ),
+        color: dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: dark ? AppColors.darkStroke : Colors.white),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
       ),
       child: Row(
         children: [
-          AngryAvatar(
-            size: 74,
-            intensity: intensity,
-            reaction: CoachReaction.idle,
-          ),
+          AngryAvatar(size: 68, intensity: intensity),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -306,21 +273,14 @@ class _HabitPreview extends StatelessWidget {
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: ink,
-                    fontWeight: FontWeight.w900,
-                    height: 1.0,
-                  ),
+                  style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 18),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   '$time · ${intensity.label}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: dark ? Colors.white70 : AppColors.muted,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(color: muted, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -331,233 +291,8 @@ class _HabitPreview extends StatelessWidget {
   }
 }
 
-class _ReminderPreview extends StatelessWidget {
-  const _ReminderPreview({
-    required this.habitName,
-    required this.time,
-    required this.intensity,
-  });
-
-  final String habitName;
-  final String time;
-  final CoachIntensity intensity;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? Colors.white : AppColors.ink;
-    final body = _bodyText();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.darkCard : AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: dark ? AppColors.darkStroke : AppColors.stroke,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.notifications_active_rounded,
-            color: AppColors.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Превью напоминания · $time',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: ink, fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  body,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: dark ? Colors.white70 : AppColors.muted,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _bodyText() {
-    final coachLine = switch (intensity) {
-      CoachIntensity.sarcastic => 'Тренер почти вежливо напоминает.',
-      CoachIntensity.toxic => 'Тренер уже смотрит недобро.',
-      CoachIntensity.ruthless => 'Тренер не принимает легенды про занятость.',
-    };
-    return '$habitName. $coachLine';
-  }
-}
-
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({required this.title, required this.child});
-
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? Colors.white : AppColors.ink;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: ink,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 8),
-        child,
-      ],
-    );
-  }
-}
-
-class _IntensityPanel extends StatelessWidget {
-  const _IntensityPanel({required this.value, required this.onChanged});
-
-  final CoachIntensity value;
-  final ValueChanged<CoachIntensity> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? Colors.white : AppColors.ink;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: dark ? AppColors.darkStroke : AppColors.stroke,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.local_fire_department_rounded,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  'Жёсткость тренера',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SegmentedButton<CoachIntensity>(
-            segments: CoachIntensity.values
-                .map(
-                  (intensity) => ButtonSegment(
-                    value: intensity,
-                    label: Text(intensity.shortLabel),
-                  ),
-                )
-                .toList(),
-            selected: {value},
-            onSelectionChanged: (selection) => onChanged(selection.first),
-            showSelectedIcon: false,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value.label,
-            style: TextStyle(
-              color: dark ? Colors.white70 : AppColors.muted,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DangerZone extends StatelessWidget {
-  const _DangerZone({required this.intensity, required this.onReset});
-
-  final CoachIntensity intensity;
-  final VoidCallback onReset;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? Colors.white : AppColors.ink;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.pink),
-      ),
-      child: Row(
-        children: [
-          AngryAvatar(
-            size: 58,
-            intensity: intensity,
-            reaction: CoachReaction.reset,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Сброс прогресса',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Серия, доверие и журнал начнутся заново.',
-                  style: TextStyle(
-                    color: dark ? Colors.white70 : AppColors.muted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          TextButton(onPressed: onReset, child: const Text('Сбросить')),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({
     required this.icon,
     required this.title,
     required this.value,
@@ -577,39 +312,18 @@ class _SettingsTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: Ink(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: dark ? AppColors.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          border: Border.all(
-            color: dark ? AppColors.darkStroke : AppColors.stroke,
-          ),
-        ),
+      borderRadius: BorderRadius.circular(AppRadii.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.primary),
+            Icon(icon, color: AppColors.accent),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(color: muted, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: ink,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
+              child: Text(title, style: TextStyle(color: muted, fontWeight: FontWeight.w700)),
             ),
+            Text(value, style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 16)),
+            const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded, color: muted),
           ],
         ),

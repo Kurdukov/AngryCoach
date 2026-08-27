@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/coach_message.dart';
 import '../models/daily_result.dart';
 import '../services/storage_service.dart';
+import '../state/habit_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 
@@ -17,7 +19,6 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   List<CoachMessage>? _messages;
-  List<DailyResult>? _dailyHistory;
   _HistoryFilter _filter = _HistoryFilter.all;
 
   @override
@@ -28,25 +29,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _load() async {
     final messages = await StorageService.instance.loadHistory();
-    final dailyHistory = await StorageService.instance.loadDailyHistory();
     if (!mounted) {
       return;
     }
-    setState(() {
-      _messages = messages;
-      _dailyHistory = dailyHistory;
-    });
+    setState(() => _messages = messages);
   }
 
   @override
   Widget build(BuildContext context) {
     final messages = _messages;
-    final dailyHistory = _dailyHistory;
+    final dailyHistory = context.watch<HabitController>().dailyHistory;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Журнал')),
       body: SafeArea(
-        child: messages == null || dailyHistory == null
+        child: messages == null
             ? const Center(child: CircularProgressIndicator())
             : _HistoryContent(
                 messages: messages,
@@ -76,57 +73,51 @@ class _HistoryContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final ink = dark ? Colors.white : AppColors.ink;
-    final completed = dailyHistory
-        .where((result) => result.status != DailyStatus.pending)
-        .length;
-    final successes = dailyHistory
-        .where((result) => result.status == DailyStatus.success)
-        .length;
-    final fails = dailyHistory
-        .where((result) => result.status == DailyStatus.fail)
-        .length;
-    final successRate = completed == 0
-        ? 0
-        : ((successes / completed) * 100).round();
+    final completed = dailyHistory.where((r) => r.status != DailyStatus.pending).length;
+    final successes = dailyHistory.where((r) => r.status == DailyStatus.success).length;
+    final fails = dailyHistory.where((r) => r.status == DailyStatus.fail).length;
+    final successRate = completed == 0 ? 0 : ((successes / completed) * 100).round();
     final filtered = _filteredResults();
     final latestMessage = messages.isEmpty ? null : messages.first;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
       children: [
-        Text(
-          'Архив дисциплины',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: ink,
-            fontWeight: FontWeight.w900,
-            height: 1.0,
-          ),
-        ),
-        const SizedBox(height: 16),
         if (latestMessage != null) ...[
           _LatestMessageCard(message: latestMessage),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
         ],
-        _SummaryPanel(
-          completed: completed,
-          successes: successes,
-          fails: fails,
-          successRate: successRate,
-        ),
-        const SizedBox(height: 16),
+        _SummaryPanel(completed: completed, successes: successes, fails: fails, successRate: successRate),
+        const SizedBox(height: 18),
         _FilterBar(selected: filter, onChanged: onFilterChanged),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         if (dailyHistory.isEmpty)
-          const _EmptyHistory()
+          const _EmptyState(
+            icon: Icons.edit_calendar_rounded,
+            title: 'Пока пусто',
+            text: 'Тренер точит карандаш и ждёт первый записанный день.',
+          )
         else if (filtered.isEmpty)
-          _EmptyFilter(filter: filter)
+          _EmptyState(
+            icon: Icons.filter_alt_off_rounded,
+            title: 'Ничего не найдено',
+            text: switch (filter) {
+              _HistoryFilter.all => 'Тут пока нечего фильтровать.',
+              _HistoryFilter.success => 'Побед нет. Неловко, но поправимо.',
+              _HistoryFilter.fail => 'Провалов нет. Тренер подозрительно молчит.',
+            },
+          )
         else
-          ...filtered.map(
-            (result) => _HistoryTile(
-              result: result,
-              message: _messageForDate(result.dateKey),
-            ),
-          ),
+          ...List.generate(filtered.length * 2 - 1, (index) {
+            if (index.isOdd) {
+              return Divider(
+                height: 22,
+                color: ink.withValues(alpha: dark ? 0.08 : 0.06),
+              );
+            }
+            final result = filtered[index ~/ 2];
+            return _HistoryTile(result: result, message: _messageForDate(result.dateKey));
+          }),
       ],
     );
   }
@@ -160,36 +151,23 @@ class _LatestMessageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
+      decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(AppRadii.md)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.campaign_rounded, color: Colors.white, size: 24),
+          const Icon(Icons.campaign_rounded, color: Colors.white, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Последний наезд',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+                const Text('Последний наезд', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 6),
                 Text(
                   message.text,
                   maxLines: 4,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    height: 1.16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, height: 1.16),
                 ),
               ],
             ),
@@ -216,11 +194,8 @@ class _SummaryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(AppRadii.lg)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -232,42 +207,19 @@ class _SummaryPanel extends StatelessWidget {
               height: 0.95,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            completed == 0
-                ? 'журнал пока пустой'
-                : 'выполнения по записанным дням',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
+            completed == 0 ? 'журнал пока пустой' : 'выполнения по записанным дням',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(
-                child: _SummaryMetric(
-                  color: AppColors.lime,
-                  value: successes,
-                  label: 'побед',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _SummaryMetric(
-                  color: AppColors.pink,
-                  value: fails,
-                  label: 'провалов',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _SummaryMetric(
-                  color: AppColors.blue,
-                  value: completed,
-                  label: 'дней',
-                ),
-              ),
+              _SummaryMetric(value: successes, label: 'побед'),
+              const SizedBox(width: 22),
+              _SummaryMetric(value: fails, label: 'провалов'),
+              const SizedBox(width: 22),
+              _SummaryMetric(value: completed, label: 'дней'),
             ],
           ),
         ],
@@ -277,47 +229,26 @@ class _SummaryPanel extends StatelessWidget {
 }
 
 class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({
-    required this.color,
-    required this.value,
-    required this.label,
-  });
+  const _SummaryMetric({required this.value, required this.label});
 
-  final Color color;
   final int value;
   final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$value',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w900,
-              height: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$value',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20, height: 1),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12),
+        ),
+      ],
     );
   }
 }
@@ -332,28 +263,12 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<_HistoryFilter>(
       segments: const [
-        ButtonSegment(
-          value: _HistoryFilter.all,
-          icon: Icon(Icons.list_rounded),
-          label: Text('Все'),
-        ),
-        ButtonSegment(
-          value: _HistoryFilter.success,
-          icon: Icon(Icons.check_rounded),
-          label: Text('Победы'),
-        ),
-        ButtonSegment(
-          value: _HistoryFilter.fail,
-          icon: Icon(Icons.close_rounded),
-          label: Text('Провалы'),
-        ),
+        ButtonSegment(value: _HistoryFilter.all, icon: Icon(Icons.list_rounded), label: Text('Все')),
+        ButtonSegment(value: _HistoryFilter.success, icon: Icon(Icons.check_rounded), label: Text('Победы')),
+        ButtonSegment(value: _HistoryFilter.fail, icon: Icon(Icons.close_rounded), label: Text('Провалы')),
       ],
       selected: {selected},
       onSelectionChanged: (selection) => onChanged(selection.first),
-      style: SegmentedButton.styleFrom(
-        selectedBackgroundColor: AppColors.lime,
-        selectedForegroundColor: AppColors.ink,
-      ),
     );
   }
 }
@@ -367,186 +282,77 @@ class _HistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final palette = _palette(result.status, dark);
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
+    final accent = switch (result.status) {
+      DailyStatus.success => AppColors.success,
+      DailyStatus.fail => AppColors.danger,
+      DailyStatus.pending => muted,
+    };
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: palette.background,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: palette.border),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 8,
-              decoration: BoxDecoration(
-                color: palette.accent,
-                borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(AppRadii.md),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: palette.badge,
-                            borderRadius: BorderRadius.circular(AppRadii.sm),
-                          ),
-                          child: Icon(
-                            _statusIcon(result.status),
-                            color: palette.icon,
-                            size: 21,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _formatDate(result.dateKey),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  color: palette.text,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                          ),
-                        ),
-                        _StatusChip(status: result.status),
-                      ],
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(_statusIcon(result.status), color: accent, size: 22),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _formatDate(result.dateKey),
+                      style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 15),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      message == null
-                          ? _fallbackText(result.status)
-                          : message!.text,
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.text.withValues(alpha: 0.82),
-                        fontWeight: FontWeight.w700,
-                        height: 1.18,
-                      ),
-                    ),
-                    if (result.failureReason != null) ...[
-                      const SizedBox(height: 12),
-                      _FailureReasonBadge(label: result.failureReason!.label),
-                    ],
-                  ],
-                ),
+                  ),
+                  _StatusChip(status: result.status, color: accent),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                message == null ? _fallbackText(result.status) : message!.text,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: muted, fontWeight: FontWeight.w700, height: 1.18),
+              ),
+              if (result.failureReason != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Причина: ${result.failureReason!.label}',
+                  style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
-}
-
-class _FailureReasonBadge extends StatelessWidget {
-  const _FailureReasonBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = dark ? Colors.white : AppColors.ink;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: textColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: textColor.withValues(alpha: 0.12)),
-      ),
-      child: Text(
-        'Причина: $label',
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
+      ],
     );
   }
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
+  const _StatusChip({required this.status, required this.color});
 
   final DailyStatus status;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final isPositive = status == DailyStatus.success;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: isPositive ? AppColors.lime : AppColors.pink,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: AppColors.ink),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(AppRadii.pill)),
       child: Text(
         _statusLabel(status),
-        style: const TextStyle(
-          color: AppColors.ink,
-          fontSize: 12,
-          fontWeight: FontWeight.w900,
-        ),
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900),
       ),
-    );
-  }
-}
-
-class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory();
-
-  @override
-  Widget build(BuildContext context) {
-    return _EmptyState(
-      icon: Icons.edit_calendar_rounded,
-      title: 'Пока пусто',
-      text: 'Тренер точит карандаш и ждёт первый записанный день.',
-    );
-  }
-}
-
-class _EmptyFilter extends StatelessWidget {
-  const _EmptyFilter({required this.filter});
-
-  final _HistoryFilter filter;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = switch (filter) {
-      _HistoryFilter.all => 'Тут пока нечего фильтровать.',
-      _HistoryFilter.success => 'Побед нет. Неловко, но поправимо.',
-      _HistoryFilter.fail => 'Провалов нет. Тренер подозрительно молчит.',
-    };
-    return _EmptyState(
-      icon: Icons.filter_alt_off_rounded,
-      title: 'Ничего не найдено',
-      text: text,
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.text,
-  });
+  const _EmptyState({required this.icon, required this.title, required this.text});
 
   final IconData icon;
   final String title;
@@ -555,41 +361,22 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = dark ? Colors.white : AppColors.ink;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: dark ? AppColors.darkCard : AppColors.lime,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: dark ? const Color(0xFF2A2B32) : AppColors.ink,
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Row(
         children: [
-          Icon(icon, color: textColor, size: 30),
+          Icon(icon, color: muted, size: 28),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                Text(title, style: TextStyle(color: ink, fontSize: 17, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 4),
-                Text(
-                  text,
-                  style: TextStyle(
-                    color: textColor.withValues(alpha: 0.72),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(text, style: TextStyle(color: muted, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -597,55 +384,6 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-class _HistoryPalette {
-  const _HistoryPalette({
-    required this.background,
-    required this.badge,
-    required this.accent,
-    required this.border,
-    required this.icon,
-    required this.text,
-  });
-
-  final Color background;
-  final Color badge;
-  final Color accent;
-  final Color border;
-  final Color icon;
-  final Color text;
-}
-
-_HistoryPalette _palette(DailyStatus status, bool dark) {
-  final card = dark ? AppColors.darkCard : Colors.white;
-  final border = dark ? const Color(0xFF2A2B32) : const Color(0xFFE1E2EA);
-  return switch (status) {
-    DailyStatus.success => _HistoryPalette(
-      background: AppColors.lime,
-      badge: Colors.white.withValues(alpha: 0.56),
-      accent: AppColors.green,
-      border: Colors.transparent,
-      icon: AppColors.ink,
-      text: AppColors.ink,
-    ),
-    DailyStatus.fail => _HistoryPalette(
-      background: AppColors.pink,
-      badge: Colors.white.withValues(alpha: 0.48),
-      accent: AppColors.ink,
-      border: Colors.transparent,
-      icon: AppColors.ink,
-      text: AppColors.ink,
-    ),
-    DailyStatus.pending => _HistoryPalette(
-      background: card,
-      badge: dark ? const Color(0xFF24252C) : const Color(0xFFF0F1F4),
-      accent: AppColors.muted,
-      border: border,
-      icon: dark ? Colors.white : AppColors.ink,
-      text: dark ? Colors.white : AppColors.ink,
-    ),
-  };
 }
 
 IconData _statusIcon(DailyStatus status) {
@@ -676,11 +414,7 @@ String _formatDate(String dateKey) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final parts = dateKey.split('-');
-  final date = DateTime(
-    int.parse(parts[0]),
-    int.parse(parts[1]),
-    int.parse(parts[2]),
-  );
+  final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
   final itemDay = DateTime(date.year, date.month, date.day);
   final difference = today.difference(itemDay).inDays;
   if (difference == 0) {

@@ -5,7 +5,6 @@ import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
-import '../theme/theme_controller.dart';
 import '../widgets/angry_avatar.dart';
 import 'home_screen.dart';
 
@@ -69,19 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _reminderTime,
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-            primary: AppColors.primary,
-            secondary: AppColors.lime,
-          ),
-        ),
-        child: child!,
-      ),
-    );
+    final picked = await showTimePicker(context: context, initialTime: _reminderTime);
     if (picked != null) {
       setState(() => _reminderTime = picked);
     }
@@ -136,11 +123,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         onPageChanged: (value) => setState(() => _page = value),
         children: [
           _WelcomeStep(onNext: _next),
-          _HabitStep(
-            controller: _habitController,
-            onNext: _next,
-            onBack: _back,
-          ),
+          _HabitStep(controller: _habitController, onNext: _next, onBack: _back),
           _ReminderStep(
             habitName: _habitController.text.trim(),
             reminderTime: _formatTime(_reminderTime),
@@ -155,6 +138,111 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
+class _OnboardingScaffold extends StatelessWidget {
+  const _OnboardingScaffold({
+    required this.step,
+    required this.title,
+    this.subtitle,
+    this.leading,
+    required this.body,
+    this.footer,
+  });
+
+  final int step;
+  final String title;
+  final String? subtitle;
+  final Widget? leading;
+  final Widget body;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            child: Row(
+              children: [
+                if (leading != null) leading! else const SizedBox(width: 48),
+                const Spacer(),
+                _StepIndicator(current: step, total: 3),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      color: ink,
+                      fontWeight: FontWeight.w900,
+                      height: 0.98,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(color: muted, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  body,
+                ],
+              ),
+            ),
+          ),
+          if (footer != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: footer,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StepIndicator extends StatelessWidget {
+  const _StepIndicator({required this.current, required this.total});
+
+  final int current;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(total, (index) {
+        final active = index <= current;
+        return Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: Container(
+            width: active ? 22 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: active
+                  ? AppColors.accent
+                  : (dark ? AppColors.darkStroke : AppColors.stroke),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
 class _WelcomeStep extends StatelessWidget {
   const _WelcomeStep({required this.onNext});
 
@@ -162,76 +250,61 @@ class _WelcomeStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.primary,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: _ThemeButton(isOnColor: true),
-              ),
-              const SizedBox(height: 18),
-              const _StepIndicator(current: 0, total: 3, onColor: true),
-              const SizedBox(height: 26),
-              Text(
-                'Angry Coach',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  height: 0.95,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Трекер привычек, который не делает вид, что ты молодец просто за установку приложения.',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  height: 1.18,
-                ),
-              ),
-              const Spacer(),
-              const _HeroCoach(),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 62,
-                child: FilledButton(
-                  onPressed: onNext,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.ink,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
+
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight - 52),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _StepIndicator(current: 0, total: 3),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Angry Coach',
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      color: ink,
+                      fontWeight: FontWeight.w900,
+                      height: 0.95,
+                    ),
                   ),
-                  child: const Text('Начать'),
-                ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Трекер привычек, который не делает вид, что ты молодец просто за установку приложения.',
+                    style: TextStyle(color: muted, fontWeight: FontWeight.w700, height: 1.2),
+                  ),
+                  const SizedBox(height: 36),
+                  const Center(child: AngryAvatar(size: 200)),
+                  const SizedBox(height: 36),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: FilledButton(onPressed: onNext, child: const Text('Начать')),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Без аккаунта. Данные остаются на телефоне.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: muted, fontWeight: FontWeight.w700),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              const Text(
-                'Без аккаунта. Данные остаются на телефоне.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 }
 
 class _HabitStep extends StatelessWidget {
-  const _HabitStep({
-    required this.controller,
-    required this.onNext,
-    required this.onBack,
-  });
+  const _HabitStep({required this.controller, required this.onNext, required this.onBack});
 
   final TextEditingController controller;
   final VoidCallback onNext;
@@ -239,65 +312,40 @@ class _HabitStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? Colors.white : AppColors.ink;
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _TopBar(onBack: onBack),
-            const SizedBox(height: 18),
-            const _StepIndicator(current: 1, total: 3),
-            const SizedBox(height: 24),
-            Text(
-              'Выбери одну привычку',
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                color: ink,
-                fontWeight: FontWeight.w900,
-                height: 0.98,
-              ),
+    return _OnboardingScaffold(
+      step: 1,
+      leading: IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back_rounded)),
+      title: 'Выбери одну привычку',
+      subtitle: 'Одну. Не весь список фантазий на новую жизнь.',
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Название привычки',
+              hintText: 'Тренировка, чтение, вода...',
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Одну. Не весь список фантазий на новую жизнь.',
-              style: TextStyle(
-                color: dark ? Colors.white70 : AppColors.muted,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Название привычки',
-                hintText: 'Тренировка, чтение, вода...',
-              ),
-            ),
-            const SizedBox(height: 18),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _Pill(text: 'Тренировка', controller: controller),
-                _Pill(text: 'Чтение', controller: controller),
-                _Pill(text: 'Без сахара', controller: controller),
-              ],
-            ),
-            const Spacer(),
-            _CoachBubble(
-              text: 'Начни с малого. Большие планы у тебя уже проваливались.',
-              color: AppColors.yellow,
-            ),
-            const SizedBox(height: 18),
-            FilledButton(onPressed: onNext, child: const Text('Дальше')),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _Pill(text: 'Тренировка', controller: controller),
+              _Pill(text: 'Чтение', controller: controller),
+              _Pill(text: 'Без сахара', controller: controller),
+            ],
+          ),
+          const SizedBox(height: 28),
+          const _CoachBubble(
+            text: 'Начни с малого. Большие планы у тебя уже проваливались.',
+          ),
+        ],
       ),
+      footer: FilledButton(onPressed: onNext, child: const Text('Дальше')),
     );
   }
 }
@@ -323,178 +371,39 @@ class _ReminderStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final habit = habitName.isEmpty ? 'Твоя привычка' : habitName;
 
-    return Container(
-      color: AppColors.lime,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _TopBar(onBack: onBack, onColor: true),
-              const SizedBox(height: 18),
-              const _StepIndicator(current: 2, total: 3, onColor: true),
-              const SizedBox(height: 22),
-              Text(
-                'Когда тебя пинать?',
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: AppColors.ink,
-                  fontWeight: FontWeight.w900,
-                  height: 0.98,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _TimeCard(time: reminderTime, onTap: onPickTime),
-              const SizedBox(height: 16),
-              _TipTile(icon: Icons.task_alt_rounded, text: habit),
-              const SizedBox(height: 12),
-              _TipTile(
-                icon: Icons.notifications_active_rounded,
-                text: 'Ежедневное напоминание в $reminderTime',
-                onTap: onPickTime,
-              ),
-              const SizedBox(height: 12),
-              const _TipTile(
-                icon: Icons.psychology_alt_rounded,
-                text: 'Сарказм включен. Терапия нет.',
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 62,
-                child: FilledButton(
-                  onPressed: saving ? null : onNext,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.ink,
-                  ),
-                  child: saving
-                      ? const SizedBox.square(
-                          dimension: 22,
-                          child: CircularProgressIndicator(strokeWidth: 3),
-                        )
-                      : const Text('Готово'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onBack, this.onColor = false});
-
-  final VoidCallback onBack;
-  final bool onColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = onColor ? AppColors.ink : null;
-
-    return Row(
-      children: [
-        IconButton(
-          onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_rounded),
-          color: color,
-        ),
-        const Spacer(),
-        _ThemeButton(isOnColor: onColor),
-      ],
-    );
-  }
-}
-
-class _ThemeButton extends StatelessWidget {
-  const _ThemeButton({required this.isOnColor});
-
-  final bool isOnColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = ThemeScope.of(context);
-    final foreground = isOnColor ? AppColors.ink : null;
-
-    return IconButton.filledTonal(
-      onPressed: controller.toggle,
-      icon: Icon(
-        controller.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-      ),
-      color: foreground,
-      style: IconButton.styleFrom(
-        backgroundColor: isOnColor
-            ? Colors.white.withValues(alpha: 0.35)
-            : null,
-      ),
-    );
-  }
-}
-
-class _StepIndicator extends StatelessWidget {
-  const _StepIndicator({
-    required this.current,
-    required this.total,
-    this.onColor = false,
-  });
-
-  final int current;
-  final int total;
-  final bool onColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(total, (index) {
-        final active = index <= current;
-        return Expanded(
-          child: Container(
-            height: 5,
-            margin: EdgeInsets.only(right: index == total - 1 ? 0 : 8),
-            decoration: BoxDecoration(
-              color: active
-                  ? (onColor ? Colors.white : AppColors.primary)
-                  : (onColor
-                        ? Colors.white.withValues(alpha: 0.22)
-                        : AppColors.stroke),
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-class _HeroCoach extends StatelessWidget {
-  const _HeroCoach();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: AppColors.ink, width: 2),
-      ),
-      child: Column(
+    return _OnboardingScaffold(
+      step: 2,
+      leading: IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back_rounded)),
+      title: 'Когда тебя пинать?',
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AngryAvatar(size: 210),
+          _TimeCard(time: reminderTime, onTap: onPickTime),
+          const SizedBox(height: 14),
+          _TipTile(icon: Icons.task_alt_rounded, text: habit),
           const SizedBox(height: 10),
-          Text(
-            'Одна привычка. Один отчёт в день. Никакой мотивационной ваты.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w900,
-              height: 1.1,
-            ),
+          _TipTile(
+            icon: Icons.notifications_active_rounded,
+            text: 'Ежедневное напоминание в $reminderTime',
+            onTap: onPickTime,
+          ),
+          const SizedBox(height: 10),
+          const _TipTile(
+            icon: Icons.psychology_alt_rounded,
+            text: 'Сарказм включен. Терапия нет.',
           ),
         ],
+      ),
+      footer: FilledButton.icon(
+        onPressed: saving ? null : onNext,
+        icon: saving
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.check_rounded),
+        label: Text(saving ? 'Готовлю...' : 'Готово'),
       ),
     );
   }
@@ -508,18 +417,17 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return ActionChip(
       onPressed: () => controller.text = text,
       label: Text(text),
       avatar: const Icon(Icons.add_rounded, size: 18),
-      backgroundColor: AppColors.lime,
-      side: const BorderSide(color: AppColors.ink),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      labelStyle: const TextStyle(
-        color: AppColors.ink,
-        fontWeight: FontWeight.w900,
+      backgroundColor: dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+      labelStyle: TextStyle(
+        color: dark ? Colors.white : AppColors.ink,
+        fontWeight: FontWeight.w800,
       ),
     );
   }
@@ -533,6 +441,9 @@ class _TimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.lg),
@@ -540,25 +451,24 @@ class _TimeCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.42),
+          color: dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
           borderRadius: BorderRadius.circular(AppRadii.lg),
-          border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.alarm_rounded, color: AppColors.ink, size: 30),
+            Icon(Icons.alarm_rounded, color: AppColors.accent, size: 30),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 time,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: AppColors.ink,
+                  color: ink,
                   fontWeight: FontWeight.w900,
                   height: 0.95,
                 ),
               ),
             ),
-            const Icon(Icons.edit_rounded, color: AppColors.ink),
+            Icon(Icons.edit_rounded, color: ink.withValues(alpha: 0.5)),
           ],
         ),
       ),
@@ -567,37 +477,27 @@ class _TimeCard extends StatelessWidget {
 }
 
 class _CoachBubble extends StatelessWidget {
-  const _CoachBubble({required this.text, required this.color});
+  const _CoachBubble({required this.text});
 
   final String text;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          const AngryAvatar(size: 76),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: AppColors.ink,
-                fontWeight: FontWeight.w900,
-                fontSize: 18,
-                height: 1.15,
-              ),
-            ),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const AngryAvatar(size: 64),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: ink, fontWeight: FontWeight.w800, height: 1.2),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -611,28 +511,22 @@ class _TipTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.sm),
       child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.38),
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-          border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.ink),
+            Icon(icon, color: AppColors.accent),
             const SizedBox(width: 14),
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(
-                  color: AppColors.ink,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: ink, fontWeight: FontWeight.w700, fontSize: 15),
               ),
             ),
           ],

@@ -1,8 +1,20 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../models/coach_intensity.dart';
 import '../models/coach_reaction.dart';
+import '../theme/app_colors.dart';
 
+/// The coach mascot.
+///
+/// Two animations run independently:
+/// - `_idle`: an infinite, gentle bob + breathe loop, so the coach is
+///   never fully static — previously it only moved once on a reaction and
+///   sat frozen the rest of the time.
+/// - `_reaction`: a one-shot punch that replays from 0 whenever
+///   [reaction] changes, with a per-reaction shape (pop for success/streak
+///   with a confetti burst, a shake for fail, a spin-fade for reset).
 class AngryAvatar extends StatefulWidget {
   const AngryAvatar({
     super.key,
@@ -20,18 +32,25 @@ class AngryAvatar extends StatefulWidget {
 }
 
 class _AngryAvatarState extends State<AngryAvatar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
+    with TickerProviderStateMixin {
+  late final AnimationController _idle;
+  late final AnimationController _reaction;
+  late final List<_Particle> _particles;
+
+  bool get _reduceMotion =>
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
   @override
   void initState() {
     super.initState();
-    // Starts "settled" (value = 1) so an idle avatar renders at rest
-    // instead of stuck mid-animation. A reaction change replays the
-    // bounce from 0.
-    _controller = AnimationController(
+    _particles = _generateParticles();
+    _idle = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 560),
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+    _reaction = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 620),
       value: 1,
     );
   }
@@ -40,93 +59,138 @@ class _AngryAvatarState extends State<AngryAvatar>
   void didUpdateWidget(covariant AngryAvatar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.reaction != widget.reaction) {
-      final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ??
-          false;
-      if (reduceMotion) {
-        _controller.value = 1;
+      if (_reduceMotion) {
+        _reaction.value = 1;
       } else {
-        _controller.forward(from: 0);
+        _reaction.forward(from: 0);
       }
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _idle.dispose();
+    _reaction.dispose();
     super.dispose();
+  }
+
+  List<_Particle> _generateParticles() {
+    final random = Random(7);
+    return List.generate(10, (index) {
+      final angle = (index / 10) * 2 * pi + random.nextDouble() * 0.3;
+      return _Particle(
+        angle: angle,
+        distance: 0.55 + random.nextDouble() * 0.45,
+        size: 3.0 + random.nextDouble() * 3.5,
+        speckColor: index.isEven ? AppColors.accent : AppColors.success,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _controller,
+      animation: Listenable.merge([_idle, _reaction]),
       builder: (context, _) {
-        final bounce = Curves.elasticOut.transform(_controller.value);
-        final scale = 0.86 + (0.14 * bounce);
-        final settle = Curves.easeOut.transform(
-          (_controller.value * 2.4).clamp(0.0, 1.0),
-        );
+        final idleT = _reduceMotion ? 0.0 : Curves.easeInOut.transform(_idle.value);
+        final bob = (idleT - 0.5) * widget.size * 0.03;
+        final breathe = 1 + (idleT * 0.018);
+
+        final t = _reaction.value;
+        final settle = Curves.easeOut.transform((t * 2.4).clamp(0.0, 1.0));
+        final pop = Curves.elasticOut.transform(t);
+
+        final shake = widget.reaction == CoachReaction.fail
+            ? sin(t * pi * 7) * (1 - t) * widget.size * 0.05
+            : 0.0;
+        final spin = widget.reaction == CoachReaction.reset
+            ? (1 - Curves.easeOut.transform(t)) * pi * 0.6
+            : 0.0;
+        final scale = breathe * (0.88 + (0.12 * pop));
 
         return SizedBox(
           width: widget.size,
-          height: widget.size,
+          height: widget.size * 1.22,
           child: Stack(
             clipBehavior: Clip.none,
-            alignment: Alignment.center,
+            alignment: Alignment.topCenter,
             children: [
-              Positioned.fill(
+              Positioned(
+                top: widget.size * 0.06,
                 child: Opacity(
-                  opacity: settle,
-                  child: DecoratedBox(
+                  opacity: (0.16 + 0.1 * idleT) * (0.7 + 0.3 * settle),
+                  child: Container(
+                    width: widget.size * 0.72,
+                    height: widget.size * 0.72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: [
-                          _reactionColor.withValues(alpha: 0.28),
-                          _reactionColor.withValues(alpha: 0.0),
+                          _reactionColor.withValues(alpha: 0.55),
+                          _reactionColor.withValues(alpha: 0),
                         ],
                       ),
                     ),
                   ),
                 ),
               ),
-              Transform.scale(
-                scale: scale,
+              if (t < 1 &&
+                  (widget.reaction == CoachReaction.success ||
+                      widget.reaction == CoachReaction.streak))
+                Positioned(
+                  top: widget.size * 0.1,
+                  child: SizedBox(
+                    width: widget.size,
+                    height: widget.size,
+                    child: CustomPaint(
+                      painter: _ParticlePainter(
+                        particles: _particles,
+                        progress: t,
+                        size: widget.size,
+                        big: widget.reaction == CoachReaction.streak,
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned(
+                top: widget.size * 0.02 + bob,
                 child: Transform.translate(
-                  offset: _reactionOffset,
+                  offset: Offset(shake, 0),
                   child: Transform.rotate(
-                    angle: _reactionAngle,
-                    child: Image.asset(
-                      _assetName,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.sports_martial_arts_rounded,
-                          size: widget.size * 0.72,
-                        );
-                      },
+                    angle: spin,
+                    child: Transform.scale(
+                      scale: scale,
+                      child: SizedBox(
+                        width: widget.size,
+                        height: widget.size,
+                        child: Image.asset(
+                          _assetName,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.sports_martial_arts_rounded,
+                              size: widget.size * 0.72,
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-              Positioned(
-                left: widget.size * 0.04,
-                right: widget.size * 0.04,
-                bottom: widget.size * 0.02,
-                child: Transform.scale(
-                  scale: 0.85 + (0.15 * settle),
+              if (widget.size >= 82)
+                Positioned(
+                  bottom: 0,
                   child: Opacity(
                     opacity: settle,
-                    child: _ReactionBadge(
+                    child: _ReactionLabel(
                       icon: _reactionIcon,
                       label: _reactionLabel,
                       color: _reactionColor,
-                      avatarSize: widget.size,
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         );
@@ -144,11 +208,11 @@ class _AngryAvatarState extends State<AngryAvatar>
 
   Color get _reactionColor {
     return switch (widget.reaction) {
-      CoachReaction.idle => const Color(0xFF0B1220),
-      CoachReaction.success => const Color(0xFF0B6B3A),
-      CoachReaction.fail => const Color(0xFF8A1235),
-      CoachReaction.streak => const Color(0xFF0057D9),
-      CoachReaction.reset => const Color(0xFF7A4D00),
+      CoachReaction.idle => AppColors.accent,
+      CoachReaction.success => AppColors.success,
+      CoachReaction.fail => AppColors.danger,
+      CoachReaction.streak => AppColors.accent,
+      CoachReaction.reset => AppColors.warning,
     };
   }
 
@@ -171,86 +235,92 @@ class _AngryAvatarState extends State<AngryAvatar>
       CoachReaction.reset => 'СБРОС',
     };
   }
-
-  Offset get _reactionOffset {
-    return switch (widget.reaction) {
-      CoachReaction.success => Offset(0, -widget.size * 0.03),
-      CoachReaction.fail => Offset(widget.size * 0.03, widget.size * 0.02),
-      CoachReaction.streak => Offset(0, -widget.size * 0.05),
-      CoachReaction.reset => Offset(0, widget.size * 0.02),
-      CoachReaction.idle => Offset.zero,
-    };
-  }
-
-  double get _reactionAngle {
-    return switch (widget.reaction) {
-      CoachReaction.success => -0.04,
-      CoachReaction.fail => 0.06,
-      CoachReaction.streak => -0.08,
-      CoachReaction.reset => 0.0,
-      CoachReaction.idle => 0.0,
-    };
-  }
 }
 
-class _ReactionBadge extends StatelessWidget {
-  const _ReactionBadge({
+class _ReactionLabel extends StatelessWidget {
+  const _ReactionLabel({
     required this.icon,
     required this.label,
     required this.color,
-    required this.avatarSize,
   });
 
   final IconData icon;
   final String label;
   final Color color;
-  final double avatarSize;
 
   @override
   Widget build(BuildContext context) {
-    final compact = avatarSize < 82;
-    final height = compact ? 26.0 : 34.0;
-    final iconSize = compact ? 14.0 : 17.0;
-    final fontSize = compact ? 9.0 : 11.0;
-
-    return Container(
-      height: height,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 7 : 10),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.66)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.34),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 15),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.2,
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: iconSize),
-          if (!compact) ...[
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
+  }
+}
+
+class _Particle {
+  const _Particle({
+    required this.angle,
+    required this.distance,
+    required this.size,
+    required this.speckColor,
+  });
+
+  final double angle;
+  final double distance;
+  final double size;
+  final Color speckColor;
+}
+
+class _ParticlePainter extends CustomPainter {
+  const _ParticlePainter({
+    required this.particles,
+    required this.progress,
+    required this.size,
+    required this.big,
+  });
+
+  final List<_Particle> particles;
+  final double progress;
+  final double size;
+  final bool big;
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    if (progress >= 1) {
+      return;
+    }
+    final center = Offset(canvasSize.width / 2, canvasSize.height / 2);
+    final travel = Curves.easeOut.transform(progress);
+    final fade = 1 - Curves.easeIn.transform(progress);
+    final reach = size * (big ? 0.62 : 0.46);
+
+    for (final particle in particles) {
+      final distance = travel * reach * particle.distance;
+      final offset = Offset(
+        center.dx + cos(particle.angle) * distance,
+        center.dy + sin(particle.angle) * distance,
+      );
+      final paint = Paint()
+        ..color = particle.speckColor.withValues(alpha: fade)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(offset, particle.size * (big ? 1.2 : 1.0), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParticlePainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

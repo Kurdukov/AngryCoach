@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/notification_service.dart';
 import 'services/storage_service.dart';
+import 'state/habit_controller.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_radii.dart';
 import 'theme/theme_controller.dart';
@@ -11,53 +13,62 @@ import 'theme/theme_controller.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.instance.initialize();
-  await ThemeController.instance.load();
-  runApp(const AngryCoachApp());
+  final themeController = ThemeController();
+  await themeController.load();
+  runApp(AngryCoachApp(themeController: themeController));
 }
 
 class AngryCoachApp extends StatelessWidget {
-  const AngryCoachApp({super.key});
+  const AngryCoachApp({super.key, required this.themeController});
+
+  final ThemeController themeController;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: ThemeController.instance,
-      builder: (context, _) {
-        return ThemeScope(
-          controller: ThemeController.instance,
-          child: MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ThemeController>.value(value: themeController),
+        ChangeNotifierProvider<HabitController>(
+          create: (_) => HabitController()..load(),
+        ),
+      ],
+      child: Consumer<ThemeController>(
+        builder: (context, theme, _) {
+          return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Angry Coach',
-            themeMode: ThemeController.instance.mode,
+            themeMode: theme.mode,
             theme: _buildTheme(Brightness.light),
             darkTheme: _buildTheme(Brightness.dark),
             home: const AppGate(),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
   ThemeData _buildTheme(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
+    final background = isDark ? AppColors.darkBackground : AppColors.background;
     final surface = isDark ? AppColors.darkSurface : AppColors.surface;
-    final card = isDark ? AppColors.darkCard : AppColors.card;
+    final stroke = isDark ? AppColors.darkStroke : AppColors.stroke;
     final ink = isDark ? Colors.white : AppColors.ink;
+    final muted = isDark ? Colors.white70 : AppColors.muted;
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
-      scaffoldBackgroundColor: surface,
+      scaffoldBackgroundColor: background,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
+        seedColor: AppColors.accent,
         brightness: brightness,
-        primary: AppColors.primary,
-        secondary: AppColors.lime,
+        primary: AppColors.accent,
         surface: surface,
       ),
+      dividerTheme: DividerThemeData(color: stroke, space: 1, thickness: 1),
       appBarTheme: AppBarTheme(
         centerTitle: false,
-        backgroundColor: surface,
+        backgroundColor: background,
         foregroundColor: ink,
         elevation: 0,
         titleTextStyle: TextStyle(
@@ -67,7 +78,7 @@ class AngryCoachApp extends StatelessWidget {
         ),
       ),
       cardTheme: CardThemeData(
-        color: card,
+        color: surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
         ),
@@ -75,33 +86,29 @@ class AngryCoachApp extends StatelessWidget {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: card,
+        fillColor: surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 18,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          borderSide: BorderSide(
-            color: isDark ? AppColors.darkStroke : AppColors.stroke,
-          ),
+          borderSide: BorderSide(color: stroke),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          borderSide: BorderSide(
-            color: isDark ? AppColors.darkStroke : AppColors.stroke,
-          ),
+          borderSide: BorderSide(color: stroke),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.md),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: const BorderSide(color: AppColors.accent, width: 2),
         ),
-        labelStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.muted),
-        hintStyle: TextStyle(color: isDark ? Colors.white70 : AppColors.muted),
+        labelStyle: TextStyle(color: muted),
+        hintStyle: TextStyle(color: muted),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.accent,
           foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(58),
           textStyle: const TextStyle(fontWeight: FontWeight.w900),

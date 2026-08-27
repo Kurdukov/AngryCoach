@@ -1,163 +1,101 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/daily_result.dart';
-import '../models/stats.dart';
 import '../models/trust_stage.dart';
 import '../services/coach_service.dart';
-import '../services/storage_service.dart';
+import '../state/habit_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
+import '../widgets/inline_stat_row.dart';
 import '../widgets/month_heatmap.dart';
 
-class StatsScreen extends StatefulWidget {
+class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
   @override
-  State<StatsScreen> createState() => _StatsScreenState();
-}
-
-class _StatsScreenState extends State<StatsScreen> {
-  Stats? _stats;
-  List<DailyResult> _dailyHistory = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final stats = await StorageService.instance.loadStats();
-    final dailyHistory = await StorageService.instance.loadDailyHistory();
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _stats = stats;
-      _dailyHistory = dailyHistory;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final stats = _stats;
+    final controller = context.watch<HabitController>();
+    final stats = controller.stats;
+    final dailyHistory = controller.dailyHistory;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final ink = dark ? Colors.white : AppColors.ink;
-    final completedDays = _dailyHistory
-        .where((result) => result.status != DailyStatus.pending)
-        .length;
-    final successDays = _dailyHistory
-        .where((result) => result.status == DailyStatus.success)
-        .length;
-    final successRate = completedDays == 0
-        ? 0
-        : ((successDays / completedDays) * 100).round();
-    final failDays = _dailyHistory
-        .where((result) => result.status == DailyStatus.fail)
-        .length;
+
+    final completedDays = dailyHistory.where((r) => r.status != DailyStatus.pending).length;
+    final successDays = dailyHistory.where((r) => r.status == DailyStatus.success).length;
+    final successRate = completedDays == 0 ? 0 : ((successDays / completedDays) * 100).round();
+    final failDays = dailyHistory.where((r) => r.status == DailyStatus.fail).length;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Статистика')),
       body: SafeArea(
-        child: stats == null
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-                children: [
-                  Text(
-                    'Панель прогресса',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: ink,
-                      fontWeight: FontWeight.w900,
-                      height: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _TrustPanel(
-                    completedDays: completedDays,
-                    trustLevel: stats.trustLevel,
-                    successRate: successRate,
-                    verdict: _coachVerdict(
-                      completedDays: completedDays,
-                      trustLevel: stats.trustLevel,
-                      successRate: successRate,
-                      currentStreak: stats.currentStreak,
-                      failDays: failDays,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 1.18,
-                    children: [
-                      _MetricCard(
-                        color: AppColors.orange,
-                        icon: Icons.local_fire_department_rounded,
-                        title: 'Текущая серия',
-                        value: '${stats.currentStreak}',
-                        subtitle: _streakSubtitle(stats.currentStreak),
-                      ),
-                      _MetricCard(
-                        color: AppColors.lime,
-                        icon: Icons.emoji_events_rounded,
-                        title: 'Рекорд',
-                        value: '${stats.bestStreak}',
-                        subtitle: 'личный максимум',
-                      ),
-                      _MetricCard(
-                        color: AppColors.pink,
-                        icon: Icons.close_rounded,
-                        title: 'Провалы',
-                        value: '$failDays',
-                        subtitle: _failSubtitle(failDays),
-                      ),
-                      _MetricCard(
-                        color: AppColors.blue,
-                        icon: Icons.fact_check_rounded,
-                        title: 'Дней учёта',
-                        value: '$completedDays',
-                        subtitle: completedDays == 0
-                            ? 'пустой архив'
-                            : 'решений',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Календарь месяца',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: ink,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  MonthHeatmap(results: _dailyHistory),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Последние 7 дней',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: ink,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SevenDayStrip(results: _lastDays(7)),
-                ],
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          children: [
+            _TrustPanel(
+              completedDays: completedDays,
+              trustLevel: stats.trustLevel,
+              successRate: successRate,
+              verdict: _coachVerdict(
+                completedDays: completedDays,
+                trustLevel: stats.trustLevel,
+                successRate: successRate,
+                currentStreak: stats.currentStreak,
+                failDays: failDays,
               ),
+            ),
+            const SizedBox(height: 20),
+            InlineStatRow(
+              items: [
+                InlineStat(
+                  icon: Icons.local_fire_department_rounded,
+                  value: '${stats.currentStreak}',
+                  label: 'серия',
+                ),
+                InlineStat(
+                  icon: Icons.emoji_events_rounded,
+                  value: '${stats.bestStreak}',
+                  label: 'рекорд',
+                ),
+                InlineStat(
+                  icon: Icons.close_rounded,
+                  value: '$failDays',
+                  label: 'провалы',
+                  accent: failDays > 0 ? AppColors.danger : null,
+                ),
+                InlineStat(
+                  icon: Icons.fact_check_rounded,
+                  value: '$completedDays',
+                  label: 'дней учёта',
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Календарь месяца',
+              style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 17),
+            ),
+            const SizedBox(height: 12),
+            MonthHeatmap(results: dailyHistory),
+            const SizedBox(height: 24),
+            Text(
+              'Последние 7 дней',
+              style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 17),
+            ),
+            const SizedBox(height: 12),
+            _SevenDayStrip(results: _lastDays(dailyHistory, 7)),
+          ],
+        ),
       ),
     );
   }
 
-  List<DailyResult> _lastDays(int count) {
+  List<DailyResult> _lastDays(List<DailyResult> dailyHistory, int count) {
     final today = DateTime.now();
     return List.generate(count, (index) {
       final day = today.subtract(Duration(days: count - index - 1));
       final key = _dateKey(day);
-      return _dailyHistory.firstWhere(
+      return dailyHistory.firstWhere(
         (result) => result.dateKey == key,
         orElse: () => DailyResult(dateKey: key, status: DailyStatus.pending),
       );
@@ -194,26 +132,6 @@ class _StatsScreenState extends State<StatsScreen> {
     }
     return 'Есть движение, но расслабляться рано. Очень рано.';
   }
-
-  String _streakSubtitle(int currentStreak) {
-    if (currentStreak == 0) {
-      return 'начни заново';
-    }
-    if (currentStreak >= 7) {
-      return 'держишь темп';
-    }
-    return 'дней подряд';
-  }
-
-  String _failSubtitle(int failDays) {
-    if (failDays == 0) {
-      return 'чисто пока';
-    }
-    if (failDays >= 5) {
-      return 'многовато';
-    }
-    return 'в журнале';
-  }
 }
 
 class _TrustPanel extends StatelessWidget {
@@ -233,9 +151,9 @@ class _TrustPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final stage = TrustStage.fromLevel(trustLevel);
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.primary,
+        color: AppColors.accent,
         borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Column(
@@ -258,134 +176,43 @@ class _TrustPanel extends StatelessWidget {
                   CoachService.instance.trustLabel(trustLevel),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    height: 1.05,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, height: 1.05),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.sm),
             child: LinearProgressIndicator(
-              minHeight: 12,
+              minHeight: 10,
               value: trustLevel / 100,
               backgroundColor: Colors.white.withValues(alpha: 0.24),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.lime),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             completedDays == 0
                 ? 'Пока нет закрытых дней. Нажми отчёт, и тренер начнёт считать.'
                 : 'Уровень: ${stage.label}. Выполнение: $successRate%.',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.82),
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadii.md),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.psychology_alt_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '${stage.summary} $verdict',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      height: 1.14,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.color,
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.subtitle,
-  });
-
-  final Color color;
-  final IconData icon;
-  final String title;
-  final String value;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 12),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: AppColors.ink, size: 24),
-              const Spacer(),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.ink.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w900,
+              const Icon(Icons.psychology_alt_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${stage.summary} $verdict',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.14),
                 ),
               ),
             ],
-          ),
-          const Spacer(),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w900,
-              height: 0.95,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w800,
-            ),
           ),
         ],
       ),
@@ -398,38 +225,32 @@ class _SevenDayStrip extends StatelessWidget {
 
   final List<DailyResult> results;
 
-  // Bug fix: labels used to be picked by position in the list
-  // (index 0 => "Пн", index 6 => "Вс"), which is only correct when the
-  // 7-day window happens to start on a Monday. Since `results` is "the
-  // last 7 calendar days", it can start on any weekday, so the label must
-  // be derived from the actual date instead.
   String _weekdayLabel(String dateKey) {
     const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     final parts = dateKey.split('-');
     if (parts.length != 3) {
       return '';
     }
-    final date = DateTime(
-      int.parse(parts[0]),
-      int.parse(parts[1]),
-      int.parse(parts[2]),
-    );
+    final date = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
     return labels[date.weekday - 1];
   }
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final neutral = dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt;
+    final neutralText = dark ? Colors.white : AppColors.ink;
+
     return Row(
       children: results.asMap().entries.map((entry) {
         final index = entry.key;
         final result = entry.value;
         final color = switch (result.status) {
-          DailyStatus.success => AppColors.lime,
-          DailyStatus.fail => AppColors.pink,
-          DailyStatus.pending =>
-            dark ? const Color(0xFF24252C) : const Color(0xFFEDEEF2),
+          DailyStatus.success => AppColors.success,
+          DailyStatus.fail => AppColors.danger,
+          DailyStatus.pending => neutral,
         };
+        final textColor = result.status == DailyStatus.pending ? neutralText : Colors.white;
         final icon = switch (result.status) {
           DailyStatus.success => Icons.check_rounded,
           DailyStatus.fail => Icons.close_rounded,
@@ -439,33 +260,15 @@ class _SevenDayStrip extends StatelessWidget {
           child: Container(
             height: 54,
             margin: EdgeInsets.only(right: index == results.length - 1 ? 0 : 8),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              border: Border.all(
-                color: dark ? const Color(0xFF2A2B32) : AppColors.ink,
-              ),
-            ),
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadii.sm)),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  icon,
-                  color: result.status == DailyStatus.pending && dark
-                      ? Colors.white
-                      : AppColors.ink,
-                  size: 19,
-                ),
+                Icon(icon, color: textColor, size: 18),
                 const SizedBox(height: 2),
                 Text(
                   _weekdayLabel(result.dateKey),
-                  style: TextStyle(
-                    color: result.status == DailyStatus.pending && dark
-                        ? Colors.white
-                        : AppColors.ink,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w900),
                 ),
               ],
             ),

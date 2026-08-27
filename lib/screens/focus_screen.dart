@@ -1,36 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/coach_intensity.dart';
 import '../models/coach_reaction.dart';
 import '../models/daily_result.dart';
 import '../models/failure_reason.dart';
-import '../models/habit.dart';
 import '../models/stats.dart';
-import '../services/coach_service.dart';
+import '../state/habit_controller.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../widgets/angry_avatar.dart';
+import '../widgets/inline_stat_row.dart';
 
 class FocusScreen extends StatefulWidget {
-  const FocusScreen({
-    super.key,
-    required this.habit,
-    required this.stats,
-    required this.dailyResult,
-    required this.intensity,
-    required this.onComplete,
-    required this.onFail,
-    required this.onReminderTimeChanged,
-    this.startInFailureFlow = false,
-  });
+  const FocusScreen({super.key, this.startInFailureFlow = false});
 
-  final Habit habit;
-  final Stats stats;
-  final DailyResult dailyResult;
-  final CoachIntensity intensity;
-  final Future<void> Function() onComplete;
-  final Future<void> Function(FailureReason reason) onFail;
-  final Future<void> Function(String time) onReminderTimeChanged;
   // UX fix: the home screen has a quick "✕" action next to the main
   // report button. It used to just open this screen exactly like the
   // primary button, which was misleading — the icon implies "mark as
@@ -43,72 +27,69 @@ class FocusScreen extends StatefulWidget {
 }
 
 class _FocusScreenState extends State<FocusScreen> {
-  DailyStatus? _resolvedStatus;
-  Stats? _resolvedStats;
-  FailureReason? _failureReason;
-  late String _plannedReminderTime;
+  late Stats _statsBeforeThisVisit;
+  bool _submittedThisVisit = false;
+  FailureReason? _freshFailureReason;
   bool _choosingFailureReason = false;
   bool _submitting = false;
   bool _updatingReminder = false;
 
-  DailyStatus get _status => _resolvedStatus ?? widget.dailyResult.status;
-  Stats get _displayStats => _resolvedStats ?? widget.stats;
-
   @override
   void initState() {
     super.initState();
-    _plannedReminderTime = widget.habit.notificationTime;
+    final controller = context.read<HabitController>();
+    _statsBeforeThisVisit = controller.stats;
     if (widget.startInFailureFlow &&
-        widget.dailyResult.status == DailyStatus.pending) {
+        controller.dailyResult.status == DailyStatus.pending) {
       _choosingFailureReason = true;
     }
   }
 
-  Future<void> _submit(
-    DailyStatus status, {
-    FailureReason? failureReason,
-  }) async {
+  Future<void> _submitSuccess() async {
     setState(() => _submitting = true);
-    if (status == DailyStatus.success) {
-      await widget.onComplete();
-    } else {
-      await widget.onFail(failureReason ?? FailureReason.other);
-    }
+    await context.read<HabitController>().completeToday();
     if (!mounted) {
       return;
     }
     setState(() {
-      _resolvedStatus = status;
-      _failureReason = failureReason;
-      _resolvedStats = status == DailyStatus.success
-          ? CoachService.instance.applySuccess(widget.stats)
-          : CoachService.instance.applyFailure(widget.stats);
+      _submittedThisVisit = true;
       _submitting = false;
     });
   }
 
-  Future<void> _pickTomorrowTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _parseTime(_plannedReminderTime),
-      helpText: 'Во сколько завтра добьём?',
-      cancelText: 'Отмена',
-      confirmText: 'Поставить',
-    );
-    if (picked == null) {
-      return;
-    }
-
-    final nextTime = _formatTime(picked);
-    setState(() => _updatingReminder = true);
-    await widget.onReminderTimeChanged(nextTime);
+  Future<void> _submitFailure(FailureReason reason) async {
+    setState(() => _submitting = true);
+    await context.read<HabitController>().failToday(reason);
     if (!mounted) {
       return;
     }
     setState(() {
-      _plannedReminderTime = nextTime;
-      _updatingReminder = false;
+      _submittedThisVisit = true;
+      _freshFailureReason = reason;
+      _submitting = false;
     });
+  }
+
+  Future<void> _pickTomorrowTime(String currentTime) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _parseTime(currentTime),
+      helpText: 'Во сколько завтра добьём?',
+      cancelText: 'Отмена',
+      confirmText: 'Поставить',
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    final nextTime = _formatTime(picked);
+    final controller = context.read<HabitController>();
+    setState(() => _updatingReminder = true);
+    await controller.updateReminderTime(nextTime);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _updatingReminder = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Завтра тренер придёт в $nextTime. Готовься.')),
     );
@@ -116,27 +97,32 @@ class _FocusScreenState extends State<FocusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = _status;
+    final controller = context.watch<HabitController>();
+    final habit = controller.habit;
+    if (habit == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
+    final status = controller.dailyResult.status;
     final locked = status != DailyStatus.pending;
+    final stats = controller.stats;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
     final statusColor = switch (status) {
-      DailyStatus.success => AppColors.lime,
-      DailyStatus.fail => AppColors.pink,
-      DailyStatus.pending => AppColors.yellow,
+      DailyStatus.success => AppColors.success,
+      DailyStatus.fail => AppColors.danger,
+      DailyStatus.pending => AppColors.accent,
     };
 
     return Scaffold(
-      backgroundColor: statusColor,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxHeight < 760;
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 42,
-                ),
+                constraints: BoxConstraints(minHeight: constraints.maxHeight - 36),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -145,115 +131,107 @@ class _FocusScreenState extends State<FocusScreen> {
                         IconButton(
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(Icons.close_rounded),
-                          color: AppColors.ink,
                         ),
                         const Spacer(),
-                        _StatusBadge(status: status),
+                        _StatusBadge(status: status, color: statusColor),
                       ],
                     ),
-                    SizedBox(height: compact ? 18 : 28),
+                    SizedBox(height: compact ? 12 : 20),
                     Text(
                       locked ? _lockedTitle(status) : 'Ежедневный отчёт',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: AppColors.ink,
+                        color: ink,
                         fontWeight: FontWeight.w900,
                         height: 0.95,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: compact ? 14 : 20),
                     _CoachPanel(
-                      habitName: widget.habit.name,
+                      habitName: habit.name,
                       message: _coachText(status),
-                      intensity: widget.intensity,
-                      reaction: _coachReaction(status),
-                      compact: compact,
+                      intensity: controller.intensity,
+                      reaction: _coachReaction(status, stats),
                     ),
-                    const SizedBox(height: 14),
-                    _ContextGrid(
-                      reminderTime: _plannedReminderTime,
-                      currentStreak: _displayStats.currentStreak,
-                      trustLevel: _displayStats.trustLevel,
-                      bestStreak: _displayStats.bestStreak,
+                    SizedBox(height: compact ? 16 : 22),
+                    InlineStatRow(
+                      items: [
+                        InlineStat(
+                          icon: Icons.local_fire_department_rounded,
+                          value: '${stats.currentStreak}',
+                          label: 'серия',
+                        ),
+                        InlineStat(
+                          icon: Icons.shield_rounded,
+                          value: '${stats.trustLevel}%',
+                          label: 'доверие',
+                        ),
+                        InlineStat(
+                          icon: Icons.emoji_events_rounded,
+                          value: '${stats.bestStreak}',
+                          label: 'рекорд',
+                        ),
+                        InlineStat(
+                          icon: Icons.schedule_rounded,
+                          value: habit.notificationTime,
+                          label: 'напоминание',
+                        ),
+                      ],
                     ),
-                    SizedBox(height: compact ? 18 : 26),
+                    SizedBox(height: compact ? 20 : 28),
                     if (locked) ...[
                       _ResultPanel(
                         status: status,
                         failureReason:
-                            _failureReason ?? widget.dailyResult.failureReason,
-                        beforeStats: widget.stats,
-                        afterStats: _displayStats,
-                        freshResult: _resolvedStatus != null,
+                            _freshFailureReason ?? controller.dailyResult.failureReason,
+                        beforeStats: _submittedThisVisit ? _statsBeforeThisVisit : stats,
+                        afterStats: stats,
+                        freshResult: _submittedThisVisit,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       _TomorrowPlanPanel(
-                        reminderTime: _plannedReminderTime,
+                        reminderTime: habit.notificationTime,
                         updating: _updatingReminder,
-                        onPickTime: _pickTomorrowTime,
+                        onPickTime: () => _pickTomorrowTime(habit.notificationTime),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       FilledButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.arrow_back_rounded),
                         label: const Text('Вернуться'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.ink,
-                          foregroundColor: Colors.white,
-                        ),
                       ),
                     ] else ...[
                       if (_choosingFailureReason) ...[
                         _FailureReasonPanel(
                           submitting: _submitting,
-                          onSelect: (reason) =>
-                              _submit(DailyStatus.fail, failureReason: reason),
+                          onSelect: _submitFailure,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         TextButton.icon(
                           onPressed: _submitting
                               ? null
-                              : () => setState(
-                                  () => _choosingFailureReason = false,
-                                ),
+                              : () => setState(() => _choosingFailureReason = false),
                           icon: const Icon(Icons.arrow_back_rounded),
                           label: const Text('Назад'),
                         ),
                       ] else ...[
                         FilledButton.icon(
-                          onPressed: _submitting
-                              ? null
-                              : () => _submit(DailyStatus.success),
+                          onPressed: _submitting ? null : _submitSuccess,
                           icon: _submitting
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                 )
                               : const Icon(Icons.check_circle_rounded),
                           label: Text(_submitting ? 'Сохраняю...' : 'Выполнил'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.ink,
-                            foregroundColor: Colors.white,
-                          ),
                         ),
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
                           onPressed: _submitting
                               ? null
-                              : () => setState(
-                                  () => _choosingFailureReason = true,
-                                ),
+                              : () => setState(() => _choosingFailureReason = true),
                           icon: const Icon(Icons.cancel_rounded),
                           label: const Text('Провалил'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.ink,
-                            side: const BorderSide(
-                              color: AppColors.ink,
-                              width: 1.4,
-                            ),
-                          ),
                         ),
                       ],
                     ],
@@ -277,20 +255,16 @@ class _FocusScreenState extends State<FocusScreen> {
 
   String _coachText(DailyStatus status) {
     return switch (status) {
-      DailyStatus.success =>
-        'Сегодня выполнено. Тренер морщится, но факт есть.',
+      DailyStatus.success => 'Сегодня выполнено. Тренер морщится, но факт есть.',
       DailyStatus.fail => 'Сегодня провалено. Завтра будет новый раунд.',
-      DailyStatus.pending =>
-        'Докладывай честно. Тренер всё равно почувствует слабину.',
+      DailyStatus.pending => 'Докладывай честно. Тренер всё равно почувствует слабину.',
     };
   }
 
-  CoachReaction _coachReaction(DailyStatus status) {
+  CoachReaction _coachReaction(DailyStatus status, Stats stats) {
     return switch (status) {
       DailyStatus.success =>
-        _displayStats.currentStreak >= 3
-            ? CoachReaction.streak
-            : CoachReaction.success,
+        stats.currentStreak >= 3 ? CoachReaction.streak : CoachReaction.success,
       DailyStatus.fail => CoachReaction.fail,
       DailyStatus.pending => CoachReaction.idle,
     };
@@ -328,18 +302,16 @@ class _ResultPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
     final success = status == DailyStatus.success;
-    final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
-      color: AppColors.ink,
-      fontWeight: FontWeight.w900,
-    );
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.48),
+        color: dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,84 +321,52 @@ class _ResultPanel extends StatelessWidget {
             children: [
               Icon(
                 success ? Icons.trending_up_rounded : Icons.warning_rounded,
-                color: AppColors.ink,
+                color: success ? AppColors.success : AppColors.danger,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Разбор дня', style: titleStyle),
+                    Text(
+                      'Разбор дня',
+                      style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
                     const SizedBox(height: 5),
                     Text(
                       _coachVerdict(),
-                      style: TextStyle(
-                        color: AppColors.ink.withValues(alpha: 0.72),
-                        fontWeight: FontWeight.w800,
-                        height: 1.16,
-                      ),
+                      style: TextStyle(color: muted, fontWeight: FontWeight.w700, height: 1.16),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _RecapMetric(
                   label: 'Серия',
                   value: freshResult
-                      ? _changeValue(
-                          beforeStats.currentStreak,
-                          afterStats.currentStreak,
-                        )
+                      ? _changeValue(beforeStats.currentStreak, afterStats.currentStreak)
                       : '${afterStats.currentStreak} дн.',
-                  detail: freshResult
-                      ? _deltaLabel(
-                          beforeStats.currentStreak,
-                          afterStats.currentStreak,
-                        )
-                      : 'сейчас',
                 ),
               ),
-              const SizedBox(width: 8),
               Expanded(
                 child: _RecapMetric(
                   label: 'Доверие',
                   value: freshResult
-                      ? _changeValue(
-                          beforeStats.trustLevel,
-                          afterStats.trustLevel,
-                          suffix: '%',
-                        )
+                      ? _changeValue(beforeStats.trustLevel, afterStats.trustLevel, suffix: '%')
                       : '${afterStats.trustLevel}%',
-                  detail: freshResult
-                      ? _deltaLabel(
-                          beforeStats.trustLevel,
-                          afterStats.trustLevel,
-                          suffix: '%',
-                        )
-                      : 'сейчас',
                 ),
               ),
-              const SizedBox(width: 8),
               Expanded(
                 child: _RecapMetric(
                   label: 'Провалы',
                   value: freshResult
-                      ? _changeValue(
-                          beforeStats.missedDays,
-                          afterStats.missedDays,
-                        )
+                      ? _changeValue(beforeStats.missedDays, afterStats.missedDays)
                       : '${afterStats.missedDays}',
-                  detail: freshResult
-                      ? _deltaLabel(
-                          beforeStats.missedDays,
-                          afterStats.missedDays,
-                        )
-                      : 'всего',
                 ),
               ),
             ],
@@ -440,12 +380,10 @@ class _ResultPanel extends StatelessWidget {
     if (status == DailyStatus.success) {
       return 'Выполнено. Серия растёт, доверие тоже. Тренер недоволен только тем, что придраться почти не к чему.';
     }
-
     final reason = failureReason;
     if (reason == null) {
       return 'Провал принят. Доверие просело, серия сгорела. Завтра придётся возвращать уважение.';
     }
-
     return '${reason.coachLine} Доверие просело, серия сгорела. Завтра без театра.';
   }
 
@@ -455,77 +393,38 @@ class _ResultPanel extends StatelessWidget {
     }
     return '$before$suffix → $after$suffix';
   }
-
-  String _deltaLabel(int before, int after, {String suffix = ''}) {
-    final delta = after - before;
-    if (delta == 0) {
-      return 'без изменений';
-    }
-    final sign = delta > 0 ? '+' : '';
-    return '$sign$delta$suffix';
-  }
 }
 
 class _RecapMetric extends StatelessWidget {
-  const _RecapMetric({
-    required this.label,
-    required this.value,
-    required this.detail,
-  });
+  const _RecapMetric({required this.label, required this.value});
 
   final String label;
   final String value;
-  final String detail;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 82),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.ink.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(color: AppColors.ink.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white60 : AppColors.muted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: muted, fontSize: 11, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
             maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: AppColors.ink.withValues(alpha: 0.58),
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-            ),
+            style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w900),
           ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: const TextStyle(
-                color: AppColors.ink,
-                fontSize: 17,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          Text(
-            detail,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: AppColors.ink.withValues(alpha: 0.62),
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -543,84 +442,44 @@ class _TomorrowPlanPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeButton = FilledButton.tonalIcon(
-      onPressed: updating ? null : onPickTime,
-      icon: updating
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.edit_calendar_rounded),
-      label: Text(reminderTime),
-      style: FilledButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.ink,
-        minimumSize: const Size(98, 46),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 330;
-
-        return Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: AppColors.ink,
-            borderRadius: BorderRadius.circular(AppRadii.md),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(AppRadii.sm),
-                    ),
-                    child: const Icon(Icons.alarm_rounded, color: Colors.white),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'План завтра',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Во сколько завтра добьём?',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.72),
-                            fontWeight: FontWeight.w800,
-                            height: 1.15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!narrow) ...[const SizedBox(width: 10), timeButton],
-                ],
-              ),
-              if (narrow) ...[
-                const SizedBox(height: 12),
-                SizedBox(width: double.infinity, child: timeButton),
+      child: Row(
+        children: [
+          Icon(Icons.alarm_rounded, color: AppColors.accent),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('План завтра', style: TextStyle(color: ink, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 2),
+                Text(
+                  'Во сколько завтра добьём?',
+                  style: TextStyle(color: muted, fontWeight: FontWeight.w700, fontSize: 12),
+                ),
               ],
-            ],
+            ),
           ),
-        );
-      },
+          const SizedBox(width: 10),
+          FilledButton.tonalIcon(
+            onPressed: updating ? null : onPickTime,
+            icon: updating
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.edit_calendar_rounded),
+            label: Text(reminderTime),
+            style: FilledButton.styleFrom(minimumSize: const Size(98, 46)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -633,52 +492,39 @@ class _FailureReasonPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.46),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Почему провал?',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppColors.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Выбери честно. Тренер всё равно не поверит, но запишет.',
-            style: TextStyle(
-              color: AppColors.ink.withValues(alpha: 0.72),
-              fontWeight: FontWeight.w800,
-              height: 1.16,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: FailureReason.values.map((reason) {
-              return ActionChip(
-                onPressed: submitting ? null : () => onSelect(reason),
-                avatar: Icon(_reasonIcon(reason), size: 18),
-                label: Text(reason.label),
-                labelStyle: const TextStyle(fontWeight: FontWeight.w900),
-                backgroundColor: Colors.white,
-                side: BorderSide(color: AppColors.ink.withValues(alpha: 0.18)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Почему провал?',
+          style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 16),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Выбери честно. Тренер всё равно не поверит, но запишет.',
+          style: TextStyle(color: muted, fontWeight: FontWeight.w700, height: 1.16),
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: FailureReason.values.map((reason) {
+            return ActionChip(
+              onPressed: submitting ? null : () => onSelect(reason),
+              avatar: Icon(_reasonIcon(reason), size: 18),
+              label: Text(reason.label),
+              labelStyle: const TextStyle(fontWeight: FontWeight.w800),
+              backgroundColor: dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
+              side: BorderSide.none,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 
@@ -694,30 +540,22 @@ class _FailureReasonPanel extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+  const _StatusBadge({required this.status, required this.color});
 
   final DailyStatus status;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadii.pill)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_statusIcon(), color: Colors.white, size: 18),
+          Icon(_statusIcon(), color: Colors.white, size: 16),
           const SizedBox(width: 6),
-          Text(
-            _statusText(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
+          Text(_statusText(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
         ],
       ),
     );
@@ -746,168 +584,45 @@ class _CoachPanel extends StatelessWidget {
     required this.message,
     required this.intensity,
     required this.reaction,
-    required this.compact,
   });
 
   final String habitName;
   final String message;
   final CoachIntensity intensity;
   final CoachReaction reaction;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.46),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.ink.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AngryAvatar(
-            size: compact ? 86 : 104,
-            intensity: intensity,
-            reaction: reaction,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  habitName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  message,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.ink.withValues(alpha: 0.72),
-                    fontWeight: FontWeight.w800,
-                    height: 1.16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? Colors.white : AppColors.ink;
+    final muted = dark ? Colors.white70 : AppColors.muted;
 
-class _ContextGrid extends StatelessWidget {
-  const _ContextGrid({
-    required this.reminderTime,
-    required this.currentStreak,
-    required this.trustLevel,
-    required this.bestStreak,
-  });
-
-  final String reminderTime;
-  final int currentStreak;
-  final int trustLevel;
-  final int bestStreak;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.75,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ContextTile(
-          icon: Icons.local_fire_department_rounded,
-          label: 'Серия',
-          value: '$currentStreak дн.',
-        ),
-        _ContextTile(
-          icon: Icons.shield_rounded,
-          label: 'Доверие',
-          value: '$trustLevel%',
-        ),
-        _ContextTile(
-          icon: Icons.emoji_events_rounded,
-          label: 'Рекорд',
-          value: '$bestStreak дн.',
-        ),
-        _ContextTile(
-          icon: Icons.schedule_rounded,
-          label: 'Напоминание',
-          value: reminderTime,
+        AngryAvatar(size: 96, intensity: intensity, reaction: reaction),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                habitName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: ink, fontWeight: FontWeight.w900, fontSize: 19),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: muted, fontWeight: FontWeight.w700, height: 1.2),
+              ),
+            ],
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _ContextTile extends StatelessWidget {
-  const _ContextTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.34),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: AppColors.ink.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.ink, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.ink.withValues(alpha: 0.62),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.ink,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -23,20 +23,8 @@ class MonthHeatmap extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: dark ? AppColors.darkCard : Colors.white.withValues(alpha: 0.86),
+        color: dark ? AppColors.darkSurfaceAlt : AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: dark
-              ? AppColors.darkStroke
-              : Colors.white.withValues(alpha: 0.92),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.0 : 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,9 +91,9 @@ class MonthHeatmap extends StatelessWidget {
             spacing: 10,
             runSpacing: 8,
             children: [
-              _HeatmapLegend(color: AppColors.green, label: 'победа'),
-              _HeatmapLegend(color: AppColors.pink, label: 'провал'),
-              _HeatmapLegend(color: AppColors.yellow, label: 'пропуск'),
+              _HeatmapLegend(color: AppColors.success, label: 'победа'),
+              _HeatmapLegend(color: AppColors.danger, label: 'провал'),
+              _HeatmapLegend(color: AppColors.warning, label: 'пропуск'),
             ],
           ),
         ],
@@ -137,18 +125,8 @@ class MonthHeatmap extends StatelessWidget {
 
   String _monthTitle(DateTime date) {
     const months = [
-      'Январь',
-      'Февраль',
-      'Март',
-      'Апрель',
-      'Май',
-      'Июнь',
-      'Июль',
-      'Август',
-      'Сентябрь',
-      'Октябрь',
-      'Ноябрь',
-      'Декабрь',
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
     ];
     return '${months[date.month - 1]} ${date.year}';
   }
@@ -171,28 +149,21 @@ class _MonthDayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final background = _background(dark);
-    final borderColor = _borderColor(dark);
+    final onColor = status != DailyStatus.pending && !future;
     final foreground = future
         ? (dark ? Colors.white38 : AppColors.muted)
-        : AppColors.ink;
+        : (onColor ? Colors.white : (dark ? Colors.white : AppColors.ink));
 
     return Container(
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        border: Border.all(
-          color: borderColor,
-          width: today ? 2 : 1,
-        ),
+        border: today ? Border.all(color: AppColors.accent, width: 2) : null,
       ),
       child: Center(
         child: Text(
           '$day',
-          style: TextStyle(
-            color: foreground,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-          ),
+          style: TextStyle(color: foreground, fontSize: 12, fontWeight: FontWeight.w900),
         ),
       ),
     );
@@ -200,26 +171,13 @@ class _MonthDayCell extends StatelessWidget {
 
   Color _background(bool dark) {
     if (future) {
-      return dark
-          ? Colors.white.withValues(alpha: 0.04)
-          : const Color(0xFFF3F5F9);
+      return dark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF3F5F9);
     }
     return switch (status) {
-      DailyStatus.success => AppColors.green,
-      DailyStatus.fail => AppColors.pink,
-      DailyStatus.pending =>
-        dark ? Colors.white.withValues(alpha: 0.08) : AppColors.yellow,
+      DailyStatus.success => AppColors.success,
+      DailyStatus.fail => AppColors.danger,
+      DailyStatus.pending => dark ? Colors.white.withValues(alpha: 0.08) : AppColors.stroke,
     };
-  }
-
-  Color _borderColor(bool dark) {
-    if (today) {
-      return AppColors.primary;
-    }
-    if (dark) {
-      return AppColors.darkStroke;
-    }
-    return Colors.white.withValues(alpha: 0.0);
   }
 }
 
@@ -238,10 +196,7 @@ class _HeatmapLegend extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-          ),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
         ),
         const SizedBox(width: 5),
         Text(
