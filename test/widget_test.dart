@@ -10,7 +10,12 @@ void main() {
     await themeController.load();
 
     await tester.pumpWidget(AngryCoachApp(themeController: themeController));
-    await tester.pumpAndSettle();
+    // AngryAvatar runs a perpetual idle bob/breathe loop, so
+    // pumpAndSettle() would wait forever. Pump a few bounded frames
+    // instead, just enough to let the async habit lookup resolve.
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.text('Angry Coach'), findsOneWidget);
     expect(
